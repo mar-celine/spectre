@@ -35,6 +35,7 @@
 #include "Parallel/GotoAction.hpp"
 #include "Parallel/InitializationFunctions.hpp"
 #include "Parallel/RegisterDerivedClassesWithCharm.hpp"
+#include "PointwiseFunctions/AnalyticSolutions/GrMhd/AlfvenWave.hpp"
 #include "PointwiseFunctions/AnalyticSolutions/GrMhd/SmoothFlow.hpp"
 #include "PointwiseFunctions/AnalyticSolutions/RelativisticEuler/FishboneMoncriefDisk.hpp"
 #include "PointwiseFunctions/AnalyticSolutions/Tags.hpp"
@@ -70,7 +71,7 @@ struct EvolutionMetavars {
   // line `using analytic_solution = ...;` and include the header file for the
   // solution.
   //  using analytic_solution = grmhd::Solutions::SmoothFlow;
-  using analytic_solution = RelativisticEuler::Solutions::FishboneMoncriefDisk;
+  using analytic_solution = grmhd::Solutions::AlfvenWave;
 
   using system = grmhd::ValenciaDivClean::System<
       typename analytic_solution::equation_of_state_type>;

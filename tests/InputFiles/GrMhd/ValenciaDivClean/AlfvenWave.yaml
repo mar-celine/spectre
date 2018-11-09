@@ -1,0 +1,60 @@
+# Distributed under the MIT License.
+# See LICENSE.txt for details.
+
+# Executable: EvolveValenciaDivClean
+# Check: execute
+
+InitialTime: 0.0
+InitialTimeStep: 0.01
+FinalTime: 0.1
+
+# InitialSlabSize is only needed for local time stepping
+# InitialSlabSize: 0.01
+
+DomainCreator:
+  Brick:
+    LowerBound: [10.5, 0.0, 0.0]
+    UpperBound: [11.5, 1.0, 1.0]
+    IsPeriodicIn: [false, false, false]
+    InitialRefinement: [0, 0, 0]
+    InitialGridPoints: [5, 5, 5]
+
+AnalyticSolution:
+  WaveNumber: 3.0
+  Pressure: 30.0
+  RestMassDensity: 20.0
+  AdiabaticIndex: 1.6
+  BackgroundMagField: 2.0
+  PerturbationSize: 0.5
+
+TimeStepper:
+  AdamsBashforthN:
+    Order: 3
+
+# StepController and StepChoosers are needed only for local time stepping
+# StepController: BinaryFraction
+
+# StepChoosers:
+#   - Constant: 0.05
+#   - Increase:
+#       Factor: 2
+#   - Cfl:
+#       SafetyFactor: 0.2
+
+VolumeFileName: "./GrMhd"
+
+NumericalFluxParams:
+
+DampingParameter: 0.0
+
+SlopeLimiterParams:
+  Type: LambdaPiN
+  TvbmConstant: 1000
+
+VariableFixerParams:
+  MinimumValueOfD: 1.0e-12
+  SafetyFactorForB: 1.0e-12
+  SafetyFactorForS: 1.0e-12
+
+ObserveNSlabs: 1000
+ObserveAtT0: true
