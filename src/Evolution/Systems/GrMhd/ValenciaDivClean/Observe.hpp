@@ -207,11 +207,6 @@ struct Observe {
         // L1 norm of the error.
         gsl::at(velocity_error_L1,d) =
           alg::accumulate(error, 0.0, PlusAbs{});
-        components.emplace_back(
-          element_name + "Error" +
-        hydro::Tags::SpatialVelocity<DataVector, Dim>::name() +
-        component_suffix,
-          error);
 
       components.emplace_back(
             element_name + "Error" +

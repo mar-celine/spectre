@@ -62,8 +62,8 @@
 
 /// \cond
 namespace Frame {
- struct Inertial;
- }  // namespace Frame
+struct Inertial;
+}  // namespace Frame
 namespace Parallel {
 template <typename Metavariables>
 class CProxy_ConstGlobalCache;
@@ -101,12 +101,17 @@ struct EvolutionMetavars {
       grmhd::ValenciaDivClean::PrimitiveRecoverySchemes::PalenzuelaEtAl>;
 
   // hack this has to be synchronized with the Observe action :(
-  using Redum = Parallel::ReductionDatum<double, funcl::Plus<>,
-                                         funcl::Sqrt<funcl::Divides<>>,
-                                         std::index_sequence<1>>;
+  using RedumL2 = Parallel::ReductionDatum<double, funcl::Plus<>,
+                                           funcl::Sqrt<funcl::Divides<>>,
+                                           std::index_sequence<1>>;
+  using RedumL1 =
+      Parallel::ReductionDatum<double, funcl::Plus<>, funcl::Divides<>,
+                               std::index_sequence<1>>;
+
   using reduction_data_tags = tmpl::list<observers::Tags::ReductionData<
       Parallel::ReductionDatum<double, funcl::AssertEqual<>>,
-      Parallel::ReductionDatum<size_t, funcl::Plus<>>, Redum, Redum, Redum>>;
+      Parallel::ReductionDatum<size_t, funcl::Plus<>>, RedumL2, RedumL2,
+      RedumL2, RedumL1, RedumL1, RedumL1>>;
 
   using compute_rhs = tmpl::flatten<tmpl::list<
       Actions::ComputeVolumeFluxes,
