@@ -26,50 +26,59 @@ namespace grmhd {
 namespace Solutions {
 
 /*!
- * \brief Circularly polarized Alfv&eacute;n wave solution in Minkowski
- * spacetime travelling in the z-direction.
+ * \brief Circularly polarized Alfvén wave solution in Minkowski
+ * spacetime travelling along a background magnetic field.
  *
  * An analytic solution to the 3-D GrMhd system. The user specifies the
- * wavenumber \f$k_z\f$ of the Alfv&eacute;n wave, the constant pressure
+ * wavenumber \f$k\f$ of the Alfvén wave, the constant pressure
  * throughout the fluid \f$P\f$, the constant rest mass density throughout the
  * fluid \f$\rho_0\f$, the adiabatic index for the ideal fluid equation of
- * state \f$\gamma\f$, the background magnetic field strength \f$B_0\f$,
- * and the strength of the perturbation of the magnetic field \f$B_1\f$.
+ * state \f$\gamma\f$, the magnetic field parallel to the wavevector
+ * \f$\vec{B_0}\f$, and the transverse magnetic field vector at \f$x=y=z=t=0\f$
+ * \f$\vec{B_1}\f$.
  *
  * We define the auxiliary velocities:
- * \f[v_{B0} = \frac{B_0}{\sqrt{\rho_0 h + B_0^2 + B_1^2}}\f]
- * \f[v_{B1} = \frac{B_1}{\sqrt{\rho_0 h + B_0^2 + B_1^2}}\f]
+ * \f[v^2_{B0} = \frac{B_0^2}{\rho_0 h + B_0^2 + B_1^2}\f]
+ * \f[v^2_{B1} = \frac{B_1^2}{\rho_0 h + B_0^2 + B_1^2}\f]
  *
- * The Alfv&eacute;n wave phase speed that solves the grmhd equations, even for
+ * The Alfvén wave phase speed that solves the grmhd equations, even for
  * finite amplitudes \ref alfven_ref "[1]", is given by:
  *
- * \f[v_A = \frac{v_{B0}}{\frac{1}{2}(1 + \sqrt{1 - (2 v_{B0}v_{B1})^2})}\f]
+ * \f[v_A^2 = \frac{2v^2_{B0}}{1 + \sqrt{1 - 4 v^2_{B0}v^2_{B1}}}\f]
  *
  * The amplitude of the fluid velocity is given by:
  *
- * \f[v_f = \frac{v_{B1}}{\frac{1}{2}(1 + \sqrt{1 - (2 v_{B0}v_{B1})^2})}\f]
+ * \f[v_f^2 = \frac{2v^2_{B1}}{1 + \sqrt{1 - 4 v^2_{B0}v^2_{B1}}}\f]
  *
+ * The electromagnetic field vectors define a set of basis vectors:
+ *
+ * \f{align*}{
+ * \hat{b}_0 &= \vec{B_0}/B_0 \\
+ * \hat{b}_1 &= \vec{B_1}/B_1 \\
+ * \hat{e} &= \hat{b}_1 \times \hat{b}_0
+ * \f}
+ *
+ * We also define the auxiliary variable for the phase \f$\phi\f$:
+ * \f[\phi = k(\vec{x}\cdot\hat{b}_0 - v_A t)\f]
  * In Cartesian coordinates \f$(x, y, z)\f$, and using
  * dimensionless units, the primitive quantities at a given time \f$t\f$ are
  * then
  *
  * \f{align*}
  * \rho(\vec{x},t) &= \rho_0 \\
- * v_x(\vec{x},t) &= -v_f \cos(k_z(z - v_A t))\\
- * v_y(\vec{x},t) &= -v_f \sin(k_z(z - v_A t))\\
- * v_z(\vec{x},t) &= 0\\
+ * \vec{v}(\vec{x},t) &= v_f(-\hat{b}_1\cos\phi
+ *  +\hat{e}\sin\phi)\\
  * P(\vec{x},t) &= P, \\
  * \epsilon(\vec{x}, t) &= \frac{P}{(\gamma - 1)\rho_0}\\
- * B_x(\vec{x},t) &= B_1 \cos(k_z(z - v_A t))\\
- * B_y(\vec{x},t) &= B_1 \sin(k_z(z - v_A t))\\
- * B_z(\vec{x},t) &= B_0
+ * \vec{B}(\vec{x},t) &= B_1(\hat{b}_1\cos\phi
+ *  -\hat{e}\sin\phi) + \vec{B_0}
  * \f}
  *
- * Note that the phase speed is not the characteristic Alfv&eacute;n speed
- * \f$c_A\f$, which is the speed in the case where the magnetic field is
- * parallel to the direction of propagation \ref alfven_ref "[1]":
+ * Note that the phase speed is not the characteristic Alfvén speed
+ * \f$c_A\f$, which is the speed in the limiting case where the total magnetic
+ * field is parallel to the direction of propagation \ref alfven_ref "[1]":
  *
- * \f[c_A = \frac{b}{\sqrt{\rho_0 h + b^2}}\f]
+ * \f[c_A^2 = \frac{b^2}{\rho_0 h + b^2}\f]
  *
  * Where \f$b^2\f$ is the invariant quantity \f$B^2 - E^2\f$, given by:
  *
