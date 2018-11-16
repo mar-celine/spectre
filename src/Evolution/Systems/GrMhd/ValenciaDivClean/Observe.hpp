@@ -132,35 +132,54 @@ struct Observe {
           element_name + hydro::Tags::SpecificEnthalpy<DataVector>::name(),
           specific_enthalpy.get());
 
+      // Used for accumulating a sum of squares for an L2 norm:
       using PlusSquare = funcl::Plus<funcl::Identity, funcl::Square<>>;
+      // Used for accumulating a sum of absolute values for an L1 norm:
+      using PlusAbs = funcl::Plus<funcl::Identity, funcl::Abs<>>;
+
+      // Compute error in rest mass density:
       DataVector error =
           tuples::get<hydro::Tags::RestMassDensity<DataVector>>(exact_solution)
               .get() -
           rest_mass_density.get();
-      const double rest_mass_density_error =
+
+      // L2 norm squared of the error.
+      const double rest_mass_density_error_L2 =
           alg::accumulate(error, 0.0, PlusSquare{});
       components.emplace_back(
           element_name + "Error" +
               hydro::Tags::RestMassDensity<DataVector>::name(),
           error);
+
+      // Compute error in specific internal energy:
       error = tuples::get<hydro::Tags::SpecificInternalEnergy<DataVector>>(
                   exact_solution)
                   .get() -
               specific_internal_energy.get();
-      const double specific_internal_energy_error =
+
+      // L2 norm squared of the error.
+      const double specific_internal_energy_error_L2 =
           alg::accumulate(error, 0.0, PlusSquare{});
       components.emplace_back(
           element_name + "Error" +
               hydro::Tags::SpecificInternalEnergy<DataVector>::name(),
           error);
+
+      // Compute error in pressure:
       error =
           tuples::get<hydro::Tags::Pressure<DataVector>>(exact_solution).get() -
           pressure.get();
-      const double pressure_error =
+
+      // L2 norm squared of the error.
+      const double pressure_error_L2 =
           alg::accumulate(error, 0.0, PlusSquare{});
       components.emplace_back(
           element_name + "Error" + hydro::Tags::Pressure<DataVector>::name(),
           error);
+
+      // L1 norm of the error to be computed later.
+      std::array<double, 3> velocity_error_L1{};
+
       for (size_t d = 0; d < Dim; ++d) {
         const std::string component_suffix =
             d == 0 ? "_x" : d == 1 ? "_y" : "_z";
@@ -184,7 +203,17 @@ struct Observe {
                     exact_solution)
                     .get(d) -
                 spatial_velocity.get(d);
+
+        // L1 norm of the error.
+        gsl::at(velocity_error_L1,d) =
+          alg::accumulate(error, 0.0, PlusAbs{});
         components.emplace_back(
+          element_name + "Error" +
+        hydro::Tags::SpatialVelocity<DataVector, Dim>::name() +
+        component_suffix,
+          error);
+
+      components.emplace_back(
             element_name + "Error" +
                 hydro::Tags::SpatialVelocity<DataVector, Dim>::name() +
                 component_suffix,
@@ -217,21 +246,27 @@ struct Observe {
           std::move(components), extents);
 
       // Send data to reduction observer
-      using Redum = Parallel::ReductionDatum<double, funcl::Plus<>,
+      using RedumL2 = Parallel::ReductionDatum<double, funcl::Plus<>,
                                              funcl::Sqrt<funcl::Divides<>>,
+                                             std::index_sequence<1>>;
+      using RedumL1 = Parallel::ReductionDatum<double, funcl::Plus<>,
+                                             funcl::Divides<>,
                                              std::index_sequence<1>>;
       using ReData = Parallel::ReductionData<
           Parallel::ReductionDatum<double, funcl::AssertEqual<>>,
-          Parallel::ReductionDatum<size_t, funcl::Plus<>>, Redum, Redum, Redum>;
+          Parallel::ReductionDatum<size_t, funcl::Plus<>>, RedumL2, RedumL2,
+          RedumL2, RedumL1, RedumL1, RedumL1>;
       Parallel::simple_action<observers::Actions::ContributeReductionData>(
           local_observer, observers::ObservationId(time),
           std::vector<std::string>{
               "Time", "NumberOfPoints", "RestMassDensityError",
-              "SpecificInternalEnergyError", "PressureError"},
-          ReData{time.value(),
+               "SpecificInternalEnergyError", "PressureError",
+               "VelocityXError", "VelocityYError", "VelocityZError"},
+               ReData{time.value(),
                 db::get<::Tags::Mesh<Dim>>(box).number_of_grid_points(),
-                 rest_mass_density_error, specific_internal_energy_error,
-                 pressure_error});
+                 rest_mass_density_error_L2, specific_internal_energy_error_L2,
+                 pressure_error_L2, velocity_error_L1[0], velocity_error_L1[1],
+                 velocity_error_L1[2]});
     }
     return std::forward_as_tuple(std::move(box));
   }
