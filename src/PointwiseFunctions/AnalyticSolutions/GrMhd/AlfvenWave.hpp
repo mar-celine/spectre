@@ -117,23 +117,25 @@ class AlfvenWave {
     static type lower_bound() { return 1.0; }
   };
 
-  /// The strength of the background magnetic field.
-  struct BackgroundMagField {
-    using type = double;
+  /// The background static magnetic field vector.
+  struct BkgdMagneticField {
+    using type = std::array<double, 3>;
     static constexpr OptionString help = {
-        "The background magnetic field strength."};
+        "The background magnetic field [B0^x, B0^y, B0^z]."};
   };
 
-  /// The amplitude of the perturbation of the magnetic field.
-  struct PerturbationSize {
-    using type = double;
+  /// The sinusoidal magnetic field vector associated with
+  /// the Alfven wave, perpendicular to the background
+  /// magnetic field vector.
+  struct WaveMagneticField {
+    using type = std::array<double, 3>;
     static constexpr OptionString help = {
-        "The perturbation amplitude of the magnetic field."};
+        "The wave magnetic field [B1^x, B1^y, B1^z]."};
   };
 
   using options =
       tmpl::list<WaveNumber, Pressure, RestMassDensity, AdiabaticIndex,
-                 BackgroundMagField, PerturbationSize>;
+                 BkgdMagneticField, WaveMagneticField>;
   static constexpr OptionString help = {
       "Circularly polarized Alfven wave in Minkowski spacetime."};
 
@@ -147,8 +149,8 @@ class AlfvenWave {
   AlfvenWave(WaveNumber::type wavenumber, Pressure::type pressure,
              RestMassDensity::type rest_mass_density,
              AdiabaticIndex::type adiabatic_index,
-             BackgroundMagField::type background_mag_field,
-             PerturbationSize::type perturbation_size) noexcept;
+             BkgdMagneticField::type bkgd_magnetic_field,
+             WaveMagneticField::type wave_magnetic_field) noexcept;
 
   // @{
   /// Retrieve hydro variable at `(x, t)`
@@ -243,13 +245,22 @@ class AlfvenWave {
       std::numeric_limits<double>::signaling_NaN();
   AdiabaticIndex::type adiabatic_index_ =
       std::numeric_limits<double>::signaling_NaN();
-  BackgroundMagField::type background_mag_field_ =
-      std::numeric_limits<double>::signaling_NaN();
-  PerturbationSize::type perturbation_size_ =
-      std::numeric_limits<double>::signaling_NaN();
+  BkgdMagneticField::type bkgd_magnetic_field_{
+      {std::numeric_limits<double>::signaling_NaN()}};
+  WaveMagneticField::type wave_magnetic_field_{
+      {std::numeric_limits<double>::signaling_NaN()}};
+  EquationsOfState::IdealFluid<true> equation_of_state_{};
+  tnsr::I<double, 3, Frame::Inertial>
+      initial_unit_vector_along_bkgd_magnetic_field_{};
+  tnsr::I<double, 3, Frame::Inertial>
+      initial_unit_vector_along_wave_magnetic_field_{};
+  tnsr::I<double, 3, Frame::Inertial>
+      initial_unit_vector_along_wave_electric_field_{};
+  double magnitude_B0_ = std::numeric_limits<double>::signaling_NaN();
+  double magnitude_B1_ = std::numeric_limits<double>::signaling_NaN();
+  double magnitude_E_ = std::numeric_limits<double>::signaling_NaN();
   double alfven_speed_ = std::numeric_limits<double>::signaling_NaN();
   double fluid_speed_ = std::numeric_limits<double>::signaling_NaN();
-  EquationsOfState::IdealFluid<true> equation_of_state_{};
   gr::Solutions::Minkowski<3> background_spacetime_{};
 };
 
