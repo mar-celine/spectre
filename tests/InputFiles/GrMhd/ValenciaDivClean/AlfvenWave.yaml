@@ -5,27 +5,27 @@
 # Check: execute
 
 InitialTime: 0.0
-InitialTimeStep: 0.01
-FinalTime: 0.1
+InitialTimeStep: 0.00125
+FinalTime: 15.0
 
 # InitialSlabSize is only needed for local time stepping
 # InitialSlabSize: 0.01
 
 DomainCreator:
   Brick:
-    LowerBound: [10.5, 0.0, 0.0]
-    UpperBound: [11.5, 1.0, 1.0]
-    IsPeriodicIn: [false, false, false]
-    InitialRefinement: [0, 0, 0]
-    InitialGridPoints: [5, 5, 5]
+    LowerBound: [0.0, 0.0, 0.0]
+    UpperBound: [6.28318530718, 6.28318530718, 6.28318530718]
+    IsPeriodicIn: [true, true, true]
+    InitialRefinement: [3, 3, 3]
+    InitialGridPoints: [8, 8, 8]
 
 AnalyticSolution:
-  WaveNumber: 3.0
-  Pressure: 30.0
-  RestMassDensity: 20.0
+  WaveNumber: 1.73205080757
+  Pressure: 1.0
+  RestMassDensity: 1.0
   AdiabaticIndex: 1.6
-  BackgroundMagField: 2.0
-  PerturbationSize: 0.5
+  BkgdMagneticField: [1.0,1.0,1.0]
+  WaveMagneticField: [1.0,-0.5,-0.5]
 
 TimeStepper:
   AdamsBashforthN:
@@ -43,6 +43,8 @@ TimeStepper:
 
 VolumeFileName: "./GrMhd"
 
+#ReductionFileName: "./Alfven"
+
 NumericalFluxParams:
 
 DampingParameter: 0.0
@@ -51,10 +53,15 @@ SlopeLimiterParams:
   Type: LambdaPiN
   TvbmConstant: 1000
 
-VariableFixerParams:
+FixToAtmosphere:
+  DensityOfAtmosphere: 1.0e-12
+  DensityCutoff: 1.0e-12
+
+FixConservatives:
+  CutoffD: 1.0e-12
   MinimumValueOfD: 1.0e-12
   SafetyFactorForB: 1.0e-12
   SafetyFactorForS: 1.0e-12
 
-ObserveNSlabs: 1000
+ObserveNSlabs: 50
 ObserveAtT0: true
