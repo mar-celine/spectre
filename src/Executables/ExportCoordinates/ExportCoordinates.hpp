@@ -70,6 +70,9 @@ struct ExportCoordinates {
     const auto& mesh = get<Tags::Mesh<Dim>>(box);
     const auto& inertial_coordinates =
         db::get<::Tags::Coordinates<Dim, Frame::Inertial>>(box);
+    const auto& jacobian = db::get<::Tags::InverseJacobian<
+        Tags::ElementMap<Dim>, Tags::Coordinates<Dim, Frame::Logical>>>(box);
+
     const std::string element_name = MakeString{} << ElementId<Dim>(array_index)
                                                   << '/';
     // Collect volume data
@@ -82,6 +85,14 @@ struct ExportCoordinates {
                                       inertial_coordinates.get_tensor_index(d)),
                               inertial_coordinates.get(d));
     }
+
+    for (size_t d = 0; d < jacobian.size(); d++) {
+      components.emplace_back(
+          element_name + "Jacobian_" +
+              jacobian.component_name(jacobian.get_tensor_index(d)),
+          jacobian[d]);
+    }
+
     // Send data to volume observer
     auto& local_observer =
         *Parallel::get_parallel_component<observers::Observer<Metavariables>>(
