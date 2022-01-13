@@ -1,7 +1,7 @@
 // Distributed under the MIT License.
 // See LICENSE.txt for details.
 
-#include "ApparentHorizons/ComputeHorizonVolumeQuantities.hpp"
+#include "ApparentHorizons/ComputeExcisionBoundaryVolumeQuantities.hpp"
 
 #pragma once
 
@@ -54,15 +54,13 @@ namespace ah {
 
 /// Single frame case
 template <typename SrcTagList, typename DestTagList>
-void ComputeHorizonVolumeQuantities::apply(
+void ComputeExcisionBoundaryVolumeQuantities::apply(
     const gsl::not_null<Variables<DestTagList>*> target_vars,
     const Variables<SrcTagList>& src_vars, const Mesh<3>& /*mesh*/) {
   static_assert(
       std::is_same_v<tmpl::list_difference<SrcTagList, allowed_src_tags>,
                      tmpl::list<>>,
-      "Found a src tag that is not allowed. If you want to add a new src tag "
-      "to allowed_src_tags, you also need to add code in "
-      "ComputeHorizonVolumeQuantities.tpp to process that src tag.");
+      "Found a src tag that is not allowed");
   static_assert(
       std::is_same_v<tmpl::list_difference<required_src_tags, SrcTagList>,
                      tmpl::list<>>,
@@ -72,9 +70,7 @@ void ComputeHorizonVolumeQuantities::apply(
       std::is_same_v<tmpl::list_difference<DestTagList,
                                            allowed_dest_tags<Frame::Inertial>>,
                      tmpl::list<>>,
-      "Found a dest tag that is not allowed. If you want to add a new dest tag "
-      "to allowed_dest_tags, you also need to add code in "
-      "ComputeHorizonVolumeQuantities.tpp to compute that dest tag.");
+      "Found a dest tag that is not allowed");
   static_assert(
       std::is_same_v<tmpl::list_difference<required_dest_tags<Frame::Inertial>,
                                            DestTagList>,
@@ -138,32 +134,11 @@ void ComputeHorizonVolumeQuantities::apply(
   gr::lapse(make_not_null(&lapse), shift, psi);
   gr::spacetime_normal_vector(make_not_null(&spacetime_normal_vector), lapse,
                               shift);
-  GeneralizedHarmonic::extrinsic_curvature(make_not_null(&extrinsic_curvature),
-                                           spacetime_normal_vector, pi, phi);
-  GeneralizedHarmonic::christoffel_second_kind(
-      make_not_null(&spatial_christoffel_second_kind), phi, inv_metric);
-
-  if constexpr (tmpl::list_contains_v<
-                    DestTagList, gr::Tags::SpatialRicci<3, Frame::Inertial>>) {
-    static_assert(
-        tmpl::list_contains_v<
-            SrcTagList,
-            Tags::deriv<GeneralizedHarmonic::Tags::Phi<3, Frame::Inertial>,
-                        tmpl::size_t<3>, Frame::Inertial>>,
-        "If Ricci is requested, SrcTags must include deriv of Phi");
-    auto& spatial_ricci =
-        get<gr::Tags::SpatialRicci<3, Frame::Inertial>>(*target_vars);
-    GeneralizedHarmonic::spatial_ricci_tensor(
-        make_not_null(&spatial_ricci), phi,
-        get<Tags::deriv<GeneralizedHarmonic::Tags::Phi<3, Frame::Inertial>,
-                        tmpl::size_t<3>, Frame::Inertial>>(src_vars),
-        inv_metric);
-  }
 }
 
 /// Dual frame case
 template <typename SrcTagList, typename DestTagList, typename TargetFrame>
-void ComputeHorizonVolumeQuantities::apply(
+void ComputeExcisionBoundaryVolumeQuantities::apply(
     const gsl::not_null<Variables<DestTagList>*> target_vars,
     const Variables<SrcTagList>& src_vars, const Mesh<3>& mesh,
     const Jacobian<DataVector, 3, TargetFrame, Frame::Inertial>& jacobian,
@@ -172,9 +147,7 @@ void ComputeHorizonVolumeQuantities::apply(
   static_assert(
       std::is_same_v<tmpl::list_difference<SrcTagList, allowed_src_tags>,
                      tmpl::list<>>,
-      "Found a src tag that is not allowed. If you want to add a new src tag "
-      "to allowed_src_tags, you also need to add code in "
-      "ComputeHorizonVolumeQuantities.tpp to process that src tag.");
+      "Found a src tag that is not allowed");
   static_assert(
       std::is_same_v<tmpl::list_difference<required_src_tags, SrcTagList>,
                      tmpl::list<>>,
@@ -184,9 +157,7 @@ void ComputeHorizonVolumeQuantities::apply(
       std::is_same_v<
           tmpl::list_difference<DestTagList, allowed_dest_tags<TargetFrame>>,
           tmpl::list<>>,
-      "Found a dest tag that is not allowed. If you want to add a new dest tag "
-      "to allowed_dest_tags, you also need to add code in "
-      "ComputeHorizonVolumeQuantities.tpp to compute that dest tag.");
+      "Found a dest tag that is not allowed");
   static_assert(
       std::is_same_v<
           tmpl::list_difference<required_dest_tags<TargetFrame>, DestTagList>,
@@ -305,49 +276,6 @@ void ComputeHorizonVolumeQuantities::apply(
   gr::christoffel_second_kind(make_not_null(&spatial_christoffel_second_kind),
                               deriv_metric, inv_metric);
 
-  // We need SpatialChristoffelSecondKind in the inertial frame only if
-  // we ask for it; otherwise we don't need to compute it at all.
-  if constexpr (tmpl::list_contains_v<DestTagList,
-                                      gr::Tags::SpatialChristoffelSecondKind<
-                                          3, Frame::Inertial>>) {
-    auto& inertial_christoffel_second_kind =
-        get<gr::Tags::SpatialChristoffelSecondKind<3, Frame::Inertial>>(
-            *target_vars);
-    GeneralizedHarmonic::christoffel_second_kind(
-        make_not_null(&inertial_christoffel_second_kind), phi,
-        inertial_inv_metric);
-  }
-
-  // We need SpatialRicci only if we ask for it (in either frame);
-  // otherwise we don't need to compute it at all.
-  if constexpr (tmpl::list_contains_v<
-                    DestTagList, gr::Tags::SpatialRicci<3, Frame::Inertial>> or
-                tmpl::list_contains_v<DestTagList,
-                                      gr::Tags::SpatialRicci<3, TargetFrame>>) {
-    static_assert(
-        tmpl::list_contains_v<
-            SrcTagList,
-            Tags::deriv<GeneralizedHarmonic::Tags::Phi<3, Frame::Inertial>,
-                        tmpl::size_t<3>, Frame::Inertial>>,
-        "If Ricci is requested, SrcTags must include deriv of Phi");
-
-    auto& inertial_spatial_ricci =
-        detail::get_from_target_or_temp<inertial_spatial_ricci_tag>(
-            target_vars, make_not_null(&buffer));
-    GeneralizedHarmonic::spatial_ricci_tensor(
-        make_not_null(&inertial_spatial_ricci), phi,
-        get<Tags::deriv<GeneralizedHarmonic::Tags::Phi<3, Frame::Inertial>,
-                        tmpl::size_t<3>, Frame::Inertial>>(src_vars),
-        inertial_inv_metric);
-
-    if constexpr (tmpl::list_contains_v<
-                      DestTagList, gr::Tags::SpatialRicci<3, TargetFrame>>) {
-      auto& spatial_ricci =
-          get<gr::Tags::SpatialRicci<3, TargetFrame>>(*target_vars);
-      transform::to_different_frame(make_not_null(&spatial_ricci),
-                                    inertial_spatial_ricci, jacobian);
-    }
-  }
 }
 
 }  // namespace ah

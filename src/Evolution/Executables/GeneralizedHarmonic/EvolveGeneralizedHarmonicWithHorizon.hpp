@@ -6,6 +6,8 @@
 #include <cstdint>
 #include <vector>
 
+#include "ApparentHorizons/ComputeExcisionBoundaryVolumeQuantities.hpp"
+#include "ApparentHorizons/ComputeExcisionBoundaryVolumeQuantities.tpp"
 #include "ApparentHorizons/ComputeHorizonVolumeQuantities.hpp"
 #include "ApparentHorizons/ComputeHorizonVolumeQuantities.tpp"
 #include "ApparentHorizons/ComputeItems.hpp"
