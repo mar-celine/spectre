@@ -21,6 +21,8 @@ spectre_target_headers(
   INCLUDE_DIRECTORY ${CMAKE_SOURCE_DIR}/src
   HEADERS
   ChangeCenterOfStrahlkorper.hpp
+  ComputeExcisionBoundaryVolumeQuantities.hpp
+  ComputeExcisionBoundaryVolumeQuantities.tpp
   ComputeHorizonVolumeQuantities.hpp
   ComputeHorizonVolumeQuantities.tpp
   ComputeItems.hpp
