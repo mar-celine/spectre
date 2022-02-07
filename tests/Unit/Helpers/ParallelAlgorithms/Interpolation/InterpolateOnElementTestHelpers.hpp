@@ -196,24 +196,24 @@ make_volume_data_and_mesh(const DomainCreator& domain_creator, Runner& runner,
   Mesh<3> mesh{domain_creator.initial_extents()[element_id.block_id()],
                Spectral::Basis::Legendre, Spectral::Quadrature::GaussLobatto};
 
-  const auto inertial_coords =
-      [&element_id, &block, &mesh, &runner, &temporal_id]() {
-        if constexpr (UseTimeDependentMaps) {
-          const auto& functions_of_time = get<domain::Tags::FunctionsOfTime>(
-              ActionTesting::cache<ElemComponent>(runner, element_id));
-          ElementMap<3, ::Frame::Grid> map_logical_to_grid{
-              element_id, block.moving_mesh_logical_to_grid_map().get_clone()};
-          return block.moving_mesh_grid_to_inertial_map()(
-              map_logical_to_grid(logical_coordinates(mesh)),
-              temporal_id.substep_time().value(), functions_of_time);
-        } else {
-          (void)runner;
-          (void)temporal_id;
-          ElementMap<3, Frame::Inertial> map{
-              element_id, block.stationary_map().get_clone()};
-          return map(logical_coordinates(mesh));
-        }
-      }();
+  const auto inertial_coords = [&element_id, &block, &mesh, &runner,
+                                &temporal_id]() {
+    if constexpr (UseTimeDependentMaps) {
+      const auto& functions_of_time = get<domain::Tags::FunctionsOfTime>(
+          ActionTesting::cache<ElemComponent>(runner, element_id));
+      ElementMap<3, ::Frame::Grid> map_logical_to_grid{
+          element_id, block.moving_mesh_logical_to_grid_map().get_clone()};
+      return block.moving_mesh_grid_to_inertial_map()(
+          map_logical_to_grid(logical_coordinates(mesh)),
+          temporal_id.substep_time().value(), functions_of_time);
+    } else {
+      (void)runner;
+      (void)temporal_id;
+      ElementMap<3, Frame::Inertial> map{element_id,
+                                         block.stationary_map().get_clone()};
+      return map(logical_coordinates(mesh));
+    }
+  }();
 
   // create volume data
   Variables<tmpl::list<Tags::TestSolution>> vars(mesh.number_of_grid_points());
@@ -231,30 +231,38 @@ void test_interpolate_on_element(
       mock_interpolation_target<metavars,
                                 typename metavars::InterpolationTargetA>;
 
-  const auto domain_creator = []() {
-    if constexpr (Metavariables::use_time_dependent_maps) {
-      return domain::creators::Shell(
-          0.9, 2.9, 2, {{7, 7}}, false, {}, {},
-          {domain::CoordinateMaps::Distribution::Linear}, ShellWedges::All,
-          std::make_unique<
-              domain::creators::time_dependence::UniformTranslation<3>>(
-              0.0, std::array<double, 3>({{0.1, 0.2, 0.3}})));
-    } else {
-      return domain::creators::Shell(0.9, 2.9, 2, {{7, 7}}, false);
-    }
-  }();
-  const auto domain = domain_creator.create_domain();
+  std::unique_ptr<DomainCreator<3>> domain_creator;
+  if constexpr (Metavariables::use_time_dependent_maps) {
+    domain_creator =
+        std::make_unique<domain::creators::Shell>(domain::creators::Shell(
+            0.9, 2.9, 2, {{7, 7}}, false, {}, {},
+            {domain::CoordinateMaps::Distribution::Linear}, ShellWedges::All,
+            std::make_unique<
+                domain::creators::time_dependence::UniformTranslation<3>>(
+                0.0, std::array<double, 3>({{0.1, 0.2, 0.3}}))));
+  } else {
+    domain_creator = std::make_unique<domain::creators::Shell>(
+        domain::creators::Shell(0.9, 2.9, 2, {{7, 7}}, false));
+  }
+  const auto domain = domain_creator->create_domain();
 
   Slab slab(0.0, 1.0);
   TimeStepId temporal_id(true, 0, Time(slab, Rational(11, 15)));
 
   // Create Element_ids.
-  const std::vector<ElementId<3>> element_ids =
-      initial_element_ids(domain_creator.initial_refinement_levels());
+  std::vector<ElementId<3>> element_ids{};
+  for (const auto& block : domain.blocks()) {
+    const auto initial_ref_levs =
+        domain_creator->initial_refinement_levels()[block.id()];
+    auto elem_ids = initial_element_ids(block.id(), initial_ref_levs);
+    element_ids.insert(element_ids.end(), elem_ids.begin(), elem_ids.end());
+  }
 
+  // Add maybe_unused for when IsTimeDependent == false
   // This name must match the hard coded one in UniformTranslation
-  const std::string f_of_t_name = "Translation";
-  std::unordered_map<std::string, double> initial_expiration_times{};
+  [[maybe_unused]] const std::string f_of_t_name = "Translation";
+  [[maybe_unused]] std::unordered_map<std::string, double>
+      initial_expiration_times{};
   initial_expiration_times[f_of_t_name] =
       13.5 / 16.0;  // Arbitrary value greater than temporal_id above.
 
@@ -285,7 +293,7 @@ void test_interpolate_on_element(
                                     3>>(interp_point_info_l) =
           block_logical_coordinates(
               domain, target_points, temporal_id.substep_time().value(),
-              domain_creator.functions_of_time(initial_expiration_times));
+              domain_creator->functions_of_time(initial_expiration_times));
     } else {
       get<intrp::Vars::PointInfoTag<typename metavars::InterpolationTargetA,
                                     3>>(interp_point_info_l) =
@@ -299,17 +307,16 @@ void test_interpolate_on_element(
   }();
 
   // Emplace target component.
-  auto runner = [&domain_creator, &initial_expiration_times]() {
-    if constexpr (Metavariables::use_time_dependent_maps) {
-      return ActionTesting::MockRuntimeSystem<metavars>(
-          domain_creator.create_domain(),
-          domain_creator.functions_of_time(initial_expiration_times));
-    } else {
-      (void)initial_expiration_times;
-      return ActionTesting::MockRuntimeSystem<metavars>(
-          domain_creator.create_domain());
-    }
-  }();
+  std::unique_ptr<ActionTesting::MockRuntimeSystem<metavars>> runner_ptr{};
+  if constexpr (Metavariables::use_time_dependent_maps) {
+    runner_ptr = std::make_unique<ActionTesting::MockRuntimeSystem<metavars>>(
+        domain_creator->create_domain(),
+        domain_creator->functions_of_time(initial_expiration_times));
+  } else {
+    runner_ptr = std::make_unique<ActionTesting::MockRuntimeSystem<metavars>>(
+        domain_creator->create_domain());
+  }
+  auto& runner = *runner_ptr;
 
   ActionTesting::set_phase(make_not_null(&runner),
                            metavars::Phase::Initialization);
@@ -327,12 +334,12 @@ void test_interpolate_on_element(
                     typename metavars::InterpolationTargetA::temporal_id::type,
                     double>) {
     initialize_elements_and_queue_simple_actions(
-        domain_creator, domain, element_ids, interp_point_info, runner,
+        *domain_creator, domain, element_ids, interp_point_info, runner,
         temporal_id.substep_time().value());
   } else if constexpr (std::is_same_v<typename metavars::InterpolationTargetA::
                                           temporal_id::type,
                                       TimeStepId>) {
-    initialize_elements_and_queue_simple_actions(domain_creator, domain,
+    initialize_elements_and_queue_simple_actions(*domain_creator, domain,
                                                  element_ids, interp_point_info,
                                                  runner, temporal_id);
   }
