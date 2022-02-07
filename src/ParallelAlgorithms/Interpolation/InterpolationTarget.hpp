@@ -62,12 +62,6 @@ namespace intrp {
 ///   TargetFrame is the frame of `vars_to_interpolate_to_target`.
 ///   The overload without Jacobians treats the case in which
 ///   TargetFrame is the same as SrcFrame.
-///   Used only *with* the Interpolator ParallelComponent.
-/// - compute_items_on_source:
-///   A `tmpl::list` of compute items that uses
-///   `Metavariables::interpolator_source_vars` as input and computes the
-///   `Variables` defined by `vars_to_interpolate_to_target`.
-///   Used only *without* the Interpolator ParallelComponent.
 /// - compute_items_on_target:
 ///   A `tmpl::list` of compute items that uses
 ///   `vars_to_interpolate_to_target` as input.

@@ -12,6 +12,7 @@
 #include "DataStructures/DataBox/DataBox.hpp"
 #include "DataStructures/DataBox/Tag.hpp"
 #include "Domain/BlockLogicalCoordinates.hpp"
+#include "Domain/Creators/DomainCreator.hpp"
 #include "Domain/Creators/Shell.hpp"
 #include "Domain/Domain.hpp"
 #include "Domain/ElementLogicalCoordinates.hpp"
@@ -19,13 +20,14 @@
 #include "Domain/LogicalCoordinates.hpp"
 #include "Domain/Structure/InitialElementIds.hpp"
 #include "Framework/ActionTesting.hpp"
+#include "Framework/MockRuntimeSystemFreeFunctions.hpp"
 #include "Framework/TestHelpers.hpp"
-#include "ParallelAlgorithms/Interpolation/InterpolationTarget.hpp"
-#include "ParallelAlgorithms/Interpolation/PointInfoTag.hpp"
-#include "ParallelAlgorithms/Interpolation/Tags.hpp"
 #include "NumericalAlgorithms/Spectral/Spectral.hpp"
 #include "Parallel/PhaseDependentActionList.hpp"
 #include "ParallelAlgorithms/Interpolation/Actions/InterpolationTargetVarsFromElement.hpp"
+#include "ParallelAlgorithms/Interpolation/InterpolationTarget.hpp"
+#include "ParallelAlgorithms/Interpolation/PointInfoTag.hpp"
+#include "ParallelAlgorithms/Interpolation/Tags.hpp"
 #include "Time/Slab.hpp"
 #include "Time/Tags.hpp"
 #include "Time/Time.hpp"
@@ -35,6 +37,7 @@
 
 /// Holds code that is shared between multiple tests. Currently used by
 /// - Test_InterpolateWithoutInterpolatorComponent.
+/// - Test_SendNextTimeToCce.
 namespace InterpolateOnElementTestHelpers {
 
 namespace Tags {
@@ -60,6 +63,22 @@ struct MultiplyByTwoCompute : MultiplyByTwo, db::ComputeTag {
   using base = MultiplyByTwo;
 };
 }  // namespace Tags
+
+// compute_vars_to_interpolate for test.
+struct ComputeMultiplyByTwo {
+  template <typename SrcTagList, typename DestTagList>
+  static void apply(const gsl::not_null<Variables<DestTagList>*> target_vars,
+                    const Variables<SrcTagList>& src_vars,
+                    const Mesh<3>& /*mesh*/) {
+    static_assert(std::is_same_v<SrcTagList, tmpl::list<Tags::TestSolution>>,
+                  "SrcTagList must be only TestSolution");
+    static_assert(std::is_same_v<DestTagList, tmpl::list<Tags::MultiplyByTwo>>,
+                  "DestTagList must be only MultiplyByTwo");
+    const auto& src = get<Tags::TestSolution>(src_vars);
+    auto& dest = get<Tags::MultiplyByTwo>(*target_vars);
+    get(dest) = get(src) * 2.0;
+  }
+};
 
 template <typename TagName, typename VarsTagList>
 void fill_variables(const gsl::not_null<Variables<VarsTagList>*> vars,
@@ -149,114 +168,174 @@ struct mock_interpolation_target {
       MockInterpolationTargetVarsFromElement<InterpolationTargetTag>>;
 };
 
-template <typename DomainCreator>
+template <typename ElemComponent, bool UseTimeDependentMaps,
+          typename DomainCreator, typename Runner, typename TemporalId>
 std::tuple<Variables<tmpl::list<Tags::TestSolution>>, Mesh<3>>
-make_volume_data_and_mesh(const DomainCreator& domain_creator,
+make_volume_data_and_mesh(const DomainCreator& domain_creator, Runner& runner,
                           const Domain<3>& domain,
-                          const ElementId<3>& element_id) {
+                          const ElementId<3>& element_id,
+                          const TemporalId& temporal_id) {
   const auto& block = domain.blocks()[element_id.block_id()];
   Mesh<3> mesh{domain_creator.initial_extents()[element_id.block_id()],
                Spectral::Basis::Legendre, Spectral::Quadrature::GaussLobatto};
-  if (block.is_time_dependent()) {
-    ERROR("The block must be time-independent");
-  }
 
-  // create volume data without the compute_items_on_source
-  ElementMap<3, Frame::Inertial> map{element_id,
-                                     block.stationary_map().get_clone()};
-  const auto inertial_coords = map(logical_coordinates(mesh));
+  const auto inertial_coords =
+      [&element_id, &block, &mesh, &runner, &temporal_id]() {
+        if constexpr (UseTimeDependentMaps) {
+          const auto& functions_of_time = get<domain::Tags::FunctionsOfTime>(
+              ActionTesting::cache<ElemComponent>(runner, element_id));
+          ElementMap<3, ::Frame::Grid> map_logical_to_grid{
+              element_id, block.moving_mesh_logical_to_grid_map().get_clone()};
+          return block.moving_mesh_grid_to_inertial_map()(
+              map_logical_to_grid(logical_coordinates(mesh)),
+              temporal_id.substep_time().value(), functions_of_time);
+        } else {
+          (void)runner;
+          (void)temporal_id;
+          ElementMap<3, Frame::Inertial> map{
+              element_id, block.stationary_map().get_clone()};
+          return map(logical_coordinates(mesh));
+        }
+      }();
+
+  // create volume data
   Variables<tmpl::list<Tags::TestSolution>> vars(mesh.number_of_grid_points());
   fill_variables<Tags::TestSolution>(make_not_null(&vars), inertial_coords);
   return std::make_tuple(std::move(vars), mesh);
-}
+      }
 
-// This is the main test; Takes a functor as an argument so that
-// different tests can call it to do slightly different things.
-template <typename Metavariables, typename elem_component, typename Functor,
-          typename... GlobalCacheTypes>
-void test_interpolate_on_element(
-    Functor initialize_elements_and_queue_simple_actions,
-    GlobalCacheTypes... global_cache_items) {
-  using metavars = Metavariables;
-  using target_component =
-      mock_interpolation_target<metavars,
-                                typename metavars::InterpolationTargetA>;
+  // This is the main test; Takes a functor as an argument so that
+  // different tests can call it to do slightly different things.
+  template <typename Metavariables, typename elem_component, typename Functor>
+  void test_interpolate_on_element(
+      Functor initialize_elements_and_queue_simple_actions) {
+    using metavars = Metavariables;
+    using target_component =
+        mock_interpolation_target<metavars,
+                                  typename metavars::InterpolationTargetA>;
 
-  const auto domain_creator =
-      domain::creators::Shell(0.9, 2.9, 2, {{7, 7}}, false);
-  const auto domain = domain_creator.create_domain();
-  Slab slab(0.0, 1.0);
-  TimeStepId temporal_id(true, 0, Time(slab, Rational(11, 15)));
-
-  // Create Element_ids.
-  std::vector<ElementId<3>> element_ids{};
-  for (const auto& block : domain.blocks()) {
-    const auto initial_ref_levs =
-        domain_creator.initial_refinement_levels()[block.id()];
-    auto elem_ids = initial_element_ids(block.id(), initial_ref_levs);
-    element_ids.insert(element_ids.end(), elem_ids.begin(), elem_ids.end());
-  }
-
-  // Create target points and interp_point_info
-  const size_t num_points = 10;
-  tnsr::I<DataVector, 3, Frame::Inertial> target_points(num_points);
-  const typename intrp::Tags::InterpPointInfo<
-      metavars>::type interp_point_info = [&domain, &target_points]() {
-    MAKE_GENERATOR(gen);
-    std::uniform_real_distribution<> r_dist(0.9001, 2.8999);
-    std::uniform_real_distribution<> theta_dist(0.0, M_PI);
-    std::uniform_real_distribution<> phi_dist(0.0, 2 * M_PI);
-    for (size_t i = 0; i < num_points; ++i) {
-      const double r = r_dist(gen);
-      const double theta = theta_dist(gen);
-      const double phi = phi_dist(gen);
-      get<0>(target_points)[i] = r * sin(theta) * cos(phi);
-      get<1>(target_points)[i] = r * sin(theta) * sin(phi);
-      get<2>(target_points)[i] = r * cos(theta);
+    std::unique_ptr<DomainCreator<3>> domain_creator;
+    if constexpr (Metavariables::use_time_dependent_maps) {
+      domain_creator =
+          std::make_unique<domain::creators::Shell>(domain::creators::Shell(
+              0.9, 2.9, 2, {{7, 7}}, false, {}, {},
+              {domain::CoordinateMaps::Distribution::Linear}, ShellWedges::All,
+              std::make_unique<
+                  domain::creators::time_dependence::UniformTranslation<3>>(
+                  0.0, std::array<double, 3>({{0.1, 0.2, 0.3}}))));
+    } else {
+      domain_creator = std::make_unique<domain::creators::Shell>(
+          domain::creators::Shell(0.9, 2.9, 2, {{7, 7}}, false));
     }
-    typename intrp::Tags::InterpPointInfo<metavars>::type interp_point_info_l{};
-    get<intrp::Vars::PointInfoTag<typename metavars::InterpolationTargetA, 3>>(
-        interp_point_info_l) = block_logical_coordinates(domain, target_points);
-    return interp_point_info_l;
-  }();
+    const auto domain = domain_creator->create_domain();
 
-  // Emplace target component.
-  ActionTesting::MockRuntimeSystem<metavars> runner{
-      tuples::tagged_tuple_from_typelist<
-          Parallel::get_const_global_cache_tags<metavars>>{
-          std::move(global_cache_items)...}};
-  ActionTesting::set_phase(make_not_null(&runner),
-                           metavars::Phase::Initialization);
-  ActionTesting::emplace_component_and_initialize<target_component>(
-      &runner, 0, {target_points});
+    Slab slab(0.0, 1.0);
+    TimeStepId temporal_id(true, 0, Time(slab, Rational(11, 15)));
 
-  static_assert(
-      std::is_same_v<typename metavars::InterpolationTargetA::temporal_id::type,
-                     double> or
-          std::is_same_v<
-              typename metavars::InterpolationTargetA::temporal_id::type,
-              TimeStepId>,
-      "Unsupported temporal_id type");
-  if constexpr (std::is_same_v<
-                    typename metavars::InterpolationTargetA::temporal_id::type,
-                    double>) {
-    initialize_elements_and_queue_simple_actions(
-        domain_creator, domain, element_ids, interp_point_info, runner,
-        temporal_id.substep_time().value());
-  } else if constexpr (std::is_same_v<typename metavars::InterpolationTargetA::
-                                          temporal_id::type,
-                                      TimeStepId>) {
-    initialize_elements_and_queue_simple_actions(domain_creator, domain,
-                                                 element_ids, interp_point_info,
-                                                 runner, temporal_id);
+    // Create Element_ids.
+    std::vector<ElementId<3>> element_ids{};
+    for (const auto& block : domain.blocks()) {
+      const auto initial_ref_levs =
+          domain_creator->initial_refinement_levels()[block.id()];
+      auto elem_ids = initial_element_ids(block.id(), initial_ref_levs);
+      element_ids.insert(element_ids.end(), elem_ids.begin(), elem_ids.end());
+    }
+
+    // Add maybe_unused for when IsTimeDependent == false
+    // This name must match the hard coded one in UniformTranslation
+    [[maybe_unused]] const std::string f_of_t_name = "Translation";
+    [[maybe_unused]] std::unordered_map<std::string, double>
+        initial_expiration_times{};
+    initial_expiration_times[f_of_t_name] =
+        13.5 / 16.0;  // Arbitrary value greater than temporal_id above.
+
+    // Create target points and interp_point_info
+    const size_t num_points = 10;
+    tnsr::I<DataVector, 3, Frame::Inertial> target_points(num_points);
+    const typename intrp::Tags::InterpPointInfo<
+        metavars>::type interp_point_info = [&domain, &domain_creator,
+                                             &temporal_id,
+                                             &initial_expiration_times,
+                                             &target_points]() {
+      MAKE_GENERATOR(gen);
+      std::uniform_real_distribution<> r_dist(0.9001, 2.8999);
+      std::uniform_real_distribution<> theta_dist(0.0, M_PI);
+      std::uniform_real_distribution<> phi_dist(0.0, 2 * M_PI);
+      for (size_t i = 0; i < num_points; ++i) {
+        const double r = r_dist(gen);
+        const double theta = theta_dist(gen);
+        const double phi = phi_dist(gen);
+        get<0>(target_points)[i] = r * sin(theta) * cos(phi);
+        get<1>(target_points)[i] = r * sin(theta) * sin(phi);
+        get<2>(target_points)[i] = r * cos(theta);
+      }
+      typename intrp::Tags::InterpPointInfo<metavars>::type
+          interp_point_info_l{};
+
+      if constexpr (Metavariables::use_time_dependent_maps) {
+        get<intrp::Vars::PointInfoTag<typename metavars::InterpolationTargetA,
+                                      3>>(interp_point_info_l) =
+            block_logical_coordinates(
+                domain, target_points, temporal_id.substep_time().value(),
+                domain_creator->functions_of_time(initial_expiration_times));
+      } else {
+        get<intrp::Vars::PointInfoTag<typename metavars::InterpolationTargetA,
+                                      3>>(interp_point_info_l) =
+            block_logical_coordinates(domain, target_points);
+        (void)temporal_id;
+        (void)domain_creator;
+        (void)initial_expiration_times;
+      }
+
+      return interp_point_info_l;
+    }();
+
+    // Emplace target component.
+    std::unique_ptr<ActionTesting::MockRuntimeSystem<metavars>> runner_ptr{};
+    if constexpr (Metavariables::use_time_dependent_maps) {
+      runner_ptr = std::make_unique<ActionTesting::MockRuntimeSystem<metavars>>(
+          domain_creator->create_domain(),
+          domain_creator->functions_of_time(initial_expiration_times));
+    } else {
+      runner_ptr = std::make_unique<ActionTesting::MockRuntimeSystem<metavars>>(
+          domain_creator->create_domain());
+    }
+    auto& runner = *runner_ptr;
+
+    ActionTesting::set_phase(make_not_null(&runner),
+                             metavars::Phase::Initialization);
+    ActionTesting::emplace_component_and_initialize<target_component>(
+        &runner, 0, {target_points});
+
+    static_assert(
+        std::is_same_v<
+            typename metavars::InterpolationTargetA::temporal_id::type,
+            double> or
+            std::is_same_v<
+                typename metavars::InterpolationTargetA::temporal_id::type,
+                TimeStepId>,
+        "Unsupported temporal_id type");
+    if constexpr (std::is_same_v<typename metavars::InterpolationTargetA::
+                                     temporal_id::type,
+                                 double>) {
+      initialize_elements_and_queue_simple_actions(
+          *domain_creator, domain, element_ids, interp_point_info, runner,
+          temporal_id.substep_time().value());
+    } else if constexpr (std::is_same_v<
+                             typename metavars::InterpolationTargetA::
+                                 temporal_id::type,
+                             TimeStepId>) {
+      initialize_elements_and_queue_simple_actions(
+          *domain_creator, domain, element_ids, interp_point_info, runner,
+          temporal_id);
+    }
+
+    // Only some of the actions/events just invoked on elements (those elements
+    // which contain target points) will queue a simple action on the
+    // InterpolationTarget.  Invoke those simple actions now.
+    while (not ActionTesting::is_simple_action_queue_empty<target_component>(
+        runner, 0)) {
+      runner.template invoke_queued_simple_action<target_component>(0);
+    }
   }
-
-  // Only some of the actions/events just invoked on elements (those elements
-  // which contain target points) will queue a simple action on the
-  // InterpolationTarget.  Invoke those simple actions now.
-  while (not ActionTesting::is_simple_action_queue_empty<target_component>(
-      runner, 0)) {
-    runner.template invoke_queued_simple_action<target_component>(0);
-  }
-}
 }  // namespace InterpolateOnElementTestHelpers

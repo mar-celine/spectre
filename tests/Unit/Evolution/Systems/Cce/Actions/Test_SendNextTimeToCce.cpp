@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include "Domain/Creators/RegisterDerivedWithCharm.hpp"
 #include "Domain/Structure/ElementId.hpp"
 #include "Evolution/Systems/Cce/Actions/SendNextTimeToCce.hpp"
 #include "Evolution/Systems/Cce/InterfaceManagers/GhLocalTimeStepping.hpp"
@@ -91,7 +92,9 @@ struct mock_gh_worldtube_boundary {
 };
 
 struct test_metavariables {
+  static constexpr bool use_time_dependent_maps = false;
   static constexpr size_t volume_dim = 3;
+  using const_global_cache_tags = tmpl::list<domain::Tags::Domain<3>>;
   struct InterpolationTargetA {
     using temporal_id = ::Tags::Time;
     using vars_to_interpolate_to_target = tmpl::list<>;
@@ -124,7 +127,7 @@ struct initialize_elements_and_queue_simple_actions {
                   const Domain<3>& domain,
                   const std::vector<ElementId<3>>& element_ids,
                   const InterpPointInfo& interp_point_info, Runner& runner,
-                  const TemporalId& /*temporal_id*/) {
+                  const TemporalId& temporal_id) {
     using elem_component = ElemComponent;
 
     ActionTesting::emplace_component_and_initialize<
@@ -136,8 +139,9 @@ struct initialize_elements_and_queue_simple_actions {
     for (const auto& element_id : element_ids) {
       // 1. Get mesh
       auto mesh =
-          get<1>(InterpolateOnElementTestHelpers::make_volume_data_and_mesh(
-              domain_creator, domain, element_id));
+          get<1>(InterpolateOnElementTestHelpers::make_volume_data_and_mesh<
+                 ElemComponent, false>(domain_creator, runner, domain,
+                                       element_id, temporal_id));
 
       // 2. emplace element.
       ActionTesting::emplace_component_and_initialize<elem_component>(
@@ -206,6 +210,7 @@ void test_send_time_to_cce(const bool substep) {
 
 SPECTRE_TEST_CASE("Unit.Evolution.Systems.Cce.Actions.SendNextTimeToCce",
                   "[Unit][Cce]") {
+  domain::creators::register_derived_with_charm();
   test_send_time_to_cce(true);
   test_send_time_to_cce(false);
 }
