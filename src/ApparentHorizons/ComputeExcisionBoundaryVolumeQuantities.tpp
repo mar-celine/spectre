@@ -77,63 +77,14 @@ void ComputeExcisionBoundaryVolumeQuantities::apply(
                      tmpl::list<>>,
       "A required dest tag is missing");
 
-  const auto& psi =
-      get<gr::Tags::SpacetimeMetric<3, Frame::Inertial>>(src_vars);
-  const auto& pi =
-      get<GeneralizedHarmonic::Tags::Pi<3, Frame::Inertial>>(src_vars);
-  const auto& phi =
-      get<GeneralizedHarmonic::Tags::Phi<3, Frame::Inertial>>(src_vars);
-
   if (target_vars->number_of_grid_points() !=
       src_vars.number_of_grid_points()) {
     target_vars->initialize(src_vars.number_of_grid_points());
   }
 
-  using metric_tag = gr::Tags::SpatialMetric<3, Frame::Inertial>;
-  using inv_metric_tag = gr::Tags::InverseSpatialMetric<3, Frame::Inertial>;
-  using lapse_tag = ::Tags::TempScalar<0, DataVector>;
-  using shift_tag = ::Tags::TempI<1, 3, Frame::Inertial, DataVector>;
-  using spacetime_normal_vector_tag =
-      ::Tags::TempA<2, 3, Frame::Inertial, DataVector>;
+  get<gr::Tags::SpacetimeMetric<3, Frame::Inertial>>(*target_vars) =
+    get<gr::Tags::SpacetimeMetric<3, Frame::Inertial>>(src_vars);
 
-  // All of the temporary tags, including some that may be repeated
-  // in the target_variables (for now).
-  using full_temp_tags_list =
-      tmpl::list<metric_tag, inv_metric_tag, lapse_tag, shift_tag,
-                 spacetime_normal_vector_tag>;
-
-  // temp tags without variables that are already in DestTagList.
-  using temp_tags_list =
-      tmpl::list_difference<full_temp_tags_list, DestTagList>;
-  TempBuffer<temp_tags_list> buffer(get<0, 0>(psi).size());
-
-  auto& extrinsic_curvature =
-      get<gr::Tags::ExtrinsicCurvature<3, Frame::Inertial>>(*target_vars);
-  auto& spatial_christoffel_second_kind =
-      get<gr::Tags::SpatialChristoffelSecondKind<3, Frame::Inertial>>(
-          *target_vars);
-
-  // These are always temporaries.
-  auto& lapse = get<lapse_tag>(buffer);
-  auto& shift = get<shift_tag>(buffer);
-  auto& spacetime_normal_vector = get<spacetime_normal_vector_tag>(buffer);
-
-  // These may or may not be temporaries
-  auto& metric = detail::get_from_target_or_temp<metric_tag>(
-      target_vars, make_not_null(&buffer));
-  auto& inv_metric = detail::get_from_target_or_temp<inv_metric_tag>(
-      target_vars, make_not_null(&buffer));
-
-  // Actual computation starts here
-
-  gr::spatial_metric(make_not_null(&metric), psi);
-  // put determinant of 3-metric temporarily into lapse to save memory.
-  determinant_and_inverse(make_not_null(&lapse), make_not_null(&inv_metric),
-                          metric);
-  gr::shift(make_not_null(&shift), psi, inv_metric);
-  gr::lapse(make_not_null(&lapse), shift, psi);
-  gr::spacetime_normal_vector(make_not_null(&spacetime_normal_vector), lapse,
-                              shift);
 }
 
 /// Dual frame case
@@ -144,7 +95,9 @@ void ComputeExcisionBoundaryVolumeQuantities::apply(
     const Jacobian<DataVector, 3, TargetFrame, Frame::Inertial>& jacobian,
     const InverseJacobian<DataVector, 3, Frame::ElementLogical, TargetFrame>&
         inverse_jacobian) {
-  static_assert(
+
+// Not implemented.
+/*  static_assert(
       std::is_same_v<tmpl::list_difference<SrcTagList, allowed_src_tags>,
                      tmpl::list<>>,
       "Found a src tag that is not allowed");
@@ -276,6 +229,7 @@ void ComputeExcisionBoundaryVolumeQuantities::apply(
   gr::christoffel_second_kind(make_not_null(&spatial_christoffel_second_kind),
                               deriv_metric, inv_metric);
 
+*/
 }
 
 }  // namespace ah
