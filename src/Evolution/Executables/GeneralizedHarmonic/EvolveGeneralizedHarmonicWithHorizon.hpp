@@ -25,6 +25,7 @@
 #include "Parallel/PhaseControl/ExecutePhaseChange.hpp"
 #include "Parallel/RegisterDerivedClassesWithCharm.hpp"
 #include "ParallelAlgorithms/Interpolation/Actions/CleanUpInterpolator.hpp"
+#include "ParallelAlgorithms/Interpolation/Actions/ElementInitInterpPoints.hpp"
 #include "ParallelAlgorithms/Interpolation/Actions/InitializeInterpolationTarget.hpp"
 #include "ParallelAlgorithms/Interpolation/Actions/InterpolationTargetReceiveVars.hpp"
 #include "ParallelAlgorithms/Interpolation/Actions/InterpolatorReceivePoints.hpp"
@@ -35,12 +36,14 @@
 #include "ParallelAlgorithms/Interpolation/Callbacks/FindApparentHorizon.hpp"
 #include "ParallelAlgorithms/Interpolation/Callbacks/ObserveTimeSeriesOnSurface.hpp"
 #include "ParallelAlgorithms/Interpolation/Events/Interpolate.hpp"
+#include "ParallelAlgorithms/Interpolation/Events/InterpolateWithoutInterpComponent.hpp"
 #include "ParallelAlgorithms/Interpolation/InterpolationTarget.hpp"
 #include "ParallelAlgorithms/Interpolation/Interpolator.hpp"
 #include "ParallelAlgorithms/Interpolation/Protocols/InterpolationTargetTag.hpp"
 #include "ParallelAlgorithms/Interpolation/Tags.hpp"
 #include "ParallelAlgorithms/Interpolation/Targets/ApparentHorizon.hpp"
 #include "Time/Actions/SelfStartActions.hpp"
+#include "ParallelAlgorithms/Interpolation/Targets/KerrHorizon.hpp"
 #include "Time/StepChoosers/Factory.hpp"
 #include "Time/StepControllers/Factory.hpp"
 #include "Time/Tags.hpp"
@@ -116,7 +119,32 @@ struct EvolutionMetavars<3, InitialData, BoundaryConditions>
         intrp::callbacks::ObserveTimeSeriesOnSurface<tags_to_observe, AhA>>;
   };
 
-  using interpolation_target_tags = tmpl::list<AhA>;
+  struct ExcisionBoundaryA
+      : tt::ConformsTo<intrp::protocols::InterpolationTargetTag> {
+    using temporal_id = ::Tags::Time;
+
+    using tags_to_observe = tmpl::list<>;
+
+    using compute_vars_to_interpolate =
+        ah::ComputeExcisionBoundaryVolumeQuantities;
+
+    using vars_to_interpolate_to_target =
+        tmpl::list<gr::Tags::SpacetimeMetric<volume_dim, Frame::Inertial>>;
+
+    using compute_items_on_source = tmpl::list<>;
+
+    using compute_items_on_target = tmpl::append<tmpl::list<>>;
+    using compute_target_points =
+        intrp::TargetPoints::KerrHorizon<ExcisionBoundaryA, ::Frame::Inertial>;
+    using post_interpolation_callback =
+        intrp::callbacks::ObserveTimeSeriesOnSurface<tags_to_observe,
+                                                     ExcisionBoundaryA>;
+    // run_callbacks
+    template <typename metavariables>
+    using interpolating_component = typename metavariables::gh_dg_element_array;
+  };
+
+  using interpolation_target_tags = tmpl::list<AhA, ExcisionBoundaryA>;
   using interpolator_source_vars = tmpl::list<
       gr::Tags::SpacetimeMetric<volume_dim, Frame::Inertial>,
       GeneralizedHarmonic::Tags::Pi<volume_dim, Frame::Inertial>,
@@ -124,12 +152,20 @@ struct EvolutionMetavars<3, InitialData, BoundaryConditions>
       Tags::deriv<GeneralizedHarmonic::Tags::Phi<volume_dim, Frame::Inertial>,
                   tmpl::size_t<3>, Frame::Inertial>>;
 
+  using interpolator_source_vars_excision_boundary =
+      tmpl::list<gr::Tags::SpacetimeMetric<volume_dim, Frame::Inertial>>;
+
   struct factory_creation
       : tt::ConformsTo<Options::protocols::FactoryCreation> {
     using factory_classes = Options::add_factory_classes<
         typename gh_base::factory_creation::factory_classes,
-        tmpl::pair<Event, tmpl::list<intrp::Events::Interpolate<
-                              3, AhA, interpolator_source_vars>>>>;
+        tmpl::pair<
+            Event,
+            tmpl::list<
+                intrp::Events::Interpolate<3, AhA, interpolator_source_vars>,
+                intrp::Events::InterpolateWithoutInterpComponent<
+                    3, ExcisionBoundaryA, EvolutionMetavars,
+                    interpolator_source_vars_excision_boundary>>>>;
   };
 
   using const_global_cache_tags = tmpl::list<
@@ -141,8 +177,11 @@ struct EvolutionMetavars<3, InitialData, BoundaryConditions>
       GeneralizedHarmonic::ConstraintDamping::Tags::DampingFunctionGamma2<
           volume_dim, Frame::Grid>>;
 
-  using observed_reduction_data_tags = observers::collect_reduction_data_tags<
-      tmpl::at<typename factory_creation::factory_classes, Event>>;
+  using observed_reduction_data_tags =
+      observers::collect_reduction_data_tags<tmpl::push_back<
+          tmpl::at<typename factory_creation::factory_classes, Event>,
+          typename AhA::post_horizon_find_callbacks,
+          typename ExcisionBoundaryA::post_interpolation_callback>>;
 
   using dg_registration_list =
       tmpl::push_back<typename gh_base::dg_registration_list,
@@ -152,13 +191,19 @@ struct EvolutionMetavars<3, InitialData, BoundaryConditions>
 
   using typename gh_base::step_actions;
 
+  // Add ElementInitInterpPoints to initialization_actions.
+  using helper_init =
+      tmpl::push_back<tmpl::pop_back<initialization_actions>,
+                      intrp::Actions::ElementInitInterpPoints<
+                          intrp::Tags::InterpPointInfo<EvolutionMetavars>>,
+                      tmpl::back<initialization_actions>>;
+
   // the dg element array needs to be re-declared to capture the new type
   // aliases for the action lists.
   using gh_dg_element_array = DgElementArray<
       EvolutionMetavars,
       tmpl::flatten<tmpl::list<
-          Parallel::PhaseActions<Phase, Phase::Initialization,
-                                 initialization_actions>,
+          Parallel::PhaseActions<Phase, Phase::Initialization, helper_init>,
           tmpl::conditional_t<
               evolution::is_numeric_initial_data_v<InitialData>,
               tmpl::list<
@@ -198,14 +243,18 @@ struct EvolutionMetavars<3, InitialData, BoundaryConditions>
         dg_registration_list, tmpl::list<>>;
   };
 
-  using component_list = tmpl::flatten<tmpl::list<
-      observers::Observer<EvolutionMetavars>,
-      observers::ObserverWriter<EvolutionMetavars>,
-      std::conditional_t<evolution::is_numeric_initial_data_v<InitialData>,
-                         importers::ElementDataReader<EvolutionMetavars>,
-                         tmpl::list<>>,
-      gh_dg_element_array, intrp::Interpolator<EvolutionMetavars>,
-      intrp::InterpolationTarget<EvolutionMetavars, AhA>>>;
+  using component_list =
+
+      tmpl::flatten<tmpl::list<
+
+          observers::Observer<EvolutionMetavars>,
+          observers::ObserverWriter<EvolutionMetavars>,
+          std::conditional_t<evolution::is_numeric_initial_data_v<InitialData>,
+                             importers::ElementDataReader<EvolutionMetavars>,
+                             tmpl::list<>>,
+          gh_dg_element_array, intrp::Interpolator<EvolutionMetavars>,
+          intrp::InterpolationTarget<EvolutionMetavars, AhA>,
+          intrp::InterpolationTarget<EvolutionMetavars, ExcisionBoundaryA>>>;
 };
 
 static const std::vector<void (*)()> charm_init_node_funcs{
