@@ -31,7 +31,7 @@
 #include "ParallelAlgorithms/Interpolation/Actions/InterpolatorReceivePoints.hpp"
 #include "ParallelAlgorithms/Interpolation/Actions/InterpolatorReceiveVolumeData.hpp"
 #include "ParallelAlgorithms/Interpolation/Actions/InterpolatorRegisterElement.hpp"
-#include "ParallelAlgorithms/Interpolation/Actions/TryToInterpolate.hpp"
+//#include "ParallelAlgorithms/Interpolation/Actions/TryToInterpolate.hpp"
 #include "ParallelAlgorithms/Interpolation/Callbacks/ErrorOnFailedApparentHorizon.hpp"
 #include "ParallelAlgorithms/Interpolation/Callbacks/FindApparentHorizon.hpp"
 #include "ParallelAlgorithms/Interpolation/Callbacks/ObserveTimeSeriesOnSurface.hpp"
@@ -191,7 +191,7 @@ struct EvolutionMetavars<3, InitialData, BoundaryConditions>
 
   */  //};
 
-  using interpolation_target_tags = tmpl::list<AhA, EbA>;
+  using interpolation_target_tags = tmpl::list<AhA/*, EbA*/>;
   using interpolator_source_vars = tmpl::list<
       gr::Tags::SpacetimeMetric<volume_dim, Frame::Inertial>,
       GeneralizedHarmonic::Tags::Pi<volume_dim, Frame::Inertial>,
