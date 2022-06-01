@@ -114,12 +114,30 @@ struct MockMetavariables {
         tmpl::list<InterpolateOnElementTestHelpers::Tags::MultiplyByTwo>;
     using compute_vars_to_interpolate =
         InterpolateOnElementTestHelpers::ComputeMultiplyByTwo;
+    // The following are not used in this test, but must be there to
+    // conform to the protocol.
+    using compute_target_points = ::intrp::TargetPoints::LineSegment<
+        InterpolationTargetAWithComputeVarsToInterpolate, 3>;
+    using post_interpolation_callback =
+        intrp::callbacks::ObserveTimeSeriesOnSurface<
+            tmpl::list<>, InterpolationTargetAWithComputeVarsToInterpolate>;
   };
-  struct InterpolationTargetAWithoutComputeVarsToInterpolate {
+
+  struct InterpolationTargetAWithoutComputeVarsToInterpolate
+      : tt::ConformsTo<intrp::protocols::InterpolationTargetTag> {
     using temporal_id = ::Tags::TimeStepId;
+    using compute_items_on_target = tmpl::list<>;
     using vars_to_interpolate_to_target =
         tmpl::list<InterpolateOnElementTestHelpers::Tags::TestSolution>;
+    // The following are not used in this test, but must be there to
+    // conform to the protocol.
+    using compute_target_points = ::intrp::TargetPoints::LineSegment<
+        InterpolationTargetAWithoutComputeVarsToInterpolate, 3>;
+    using post_interpolation_callback =
+        intrp::callbacks::ObserveTimeSeriesOnSurface<
+            tmpl::list<>, InterpolationTargetAWithoutComputeVarsToInterpolate>;
   };
+
   using InterpolationTargetA =
       tmpl::conditional_t<HaveComputeVarsToInterpolate,
                           InterpolationTargetAWithComputeVarsToInterpolate,
