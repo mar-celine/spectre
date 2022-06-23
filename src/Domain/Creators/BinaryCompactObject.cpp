@@ -68,6 +68,8 @@ BinaryCompactObject::BinaryCompactObject(
     const std::optional<double>& radius_enveloping_sphere,
     const CoordinateMaps::Distribution radial_distribution_outer_shell,
     const double radius_add_outer_shell,
+    const CoordinateMaps::Distribution
+        radial_distribution_additional_outer_shell,
     std::unique_ptr<domain::BoundaryConditions::BoundaryCondition>
         outer_boundary_condition,
     const Options::Context& context)
@@ -79,6 +81,8 @@ BinaryCompactObject::BinaryCompactObject(
       frustum_sphericity_(frustum_sphericity),
       radial_distribution_outer_shell_(radial_distribution_outer_shell),
       radius_add_outer_shell_(radius_add_outer_shell),
+      radial_distribution_additional_outer_shell_(
+          radial_distribution_additional_outer_shell),
       outer_boundary_condition_(std::move(outer_boundary_condition)) {
   // Determination of parameters for domain construction:
   translation_ = 0.5 * (object_B_.x_coord + object_A_.x_coord);
@@ -320,6 +324,8 @@ BinaryCompactObject::BinaryCompactObject(
     const std::optional<double>& radius_enveloping_sphere,
     CoordinateMaps::Distribution radial_distribution_outer_shell,
     const double radius_add_outer_shell,
+    const CoordinateMaps::Distribution
+        radial_distribution_additional_outer_shell,
     std::unique_ptr<domain::BoundaryConditions::BoundaryCondition>
         outer_boundary_condition,
     const Options::Context& context)
@@ -328,7 +334,7 @@ BinaryCompactObject::BinaryCompactObject(
           outer_radius_domain, initial_refinement,
           initial_number_of_grid_points, use_projective_map, frustum_sphericity,
           radius_enveloping_sphere, radial_distribution_outer_shell,
-          radius_add_outer_shell,
+          radius_add_outer_shell, radial_distribution_additional_outer_shell,
           std::move(outer_boundary_condition), context) {
   enable_time_dependence_ = true;
   initial_time_ = initial_time;
@@ -512,9 +518,10 @@ Domain<3> BinaryCompactObject::create_domain() const {
   if(radius_add_outer_shell_ > outer_radius_domain_){
   // --- Additional spherical shell (10 blocks) ---
   Maps maps_additional_outer_shell = domain::make_vector_coordinate_map_base<
-      Frame::BlockLogical, Frame::Inertial, 3>(sph_wedge_coordinate_maps(
-      outer_radius_domain_, 2.0 * outer_radius_domain_, 1.0, 1.0,
-      use_equiangular_map_, true, {}, {radial_distribution_outer_shell_}));
+      Frame::BlockLogical, Frame::Inertial, 3>(
+      sph_wedge_coordinate_maps(outer_radius_domain_, radius_add_outer_shell_,
+                                1.0, 1.0, use_equiangular_map_, true, {},
+                                {radial_distribution_additional_outer_shell_}));
   if (outer_boundary_condition_ != nullptr) {
     // The outer 10 wedges all have to have the outer boundary condition
     // applied
