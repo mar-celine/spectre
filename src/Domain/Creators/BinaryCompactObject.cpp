@@ -511,6 +511,9 @@ Domain<3> BinaryCompactObject::create_domain() const {
       bcs[Direction<3>::upper_zeta()] = outer_boundary_condition_->get_clone();
       boundary_conditions_all_blocks.push_back(std::move(bcs));
     }
+  } else {
+    // add empty bcs to these blocks
+    add_no_boundary_conditions(maps_second_outer_shell);
   }
   std::move(maps_second_outer_shell.begin(), maps_second_outer_shell.end(),
             std::back_inserter(maps));
