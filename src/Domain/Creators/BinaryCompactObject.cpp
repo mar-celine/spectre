@@ -48,6 +48,8 @@
 #include "Domain/Structure/ExcisionSphere.hpp"
 #include "Utilities/MakeArray.hpp"
 
+#include <iostream>
+
 namespace Frame {
 struct BlockLogical;
 }  // namespace Frame
@@ -101,13 +103,16 @@ BinaryCompactObject::BinaryCompactObject(
   // for a total of 44, or 54 when the cube-to-sphere transition is needed.
   number_of_blocks_ = 44;
   if (need_cube_to_sphere_transition_) {
+    std::cout << "Need cube to sphere transition" << std::endl;
     number_of_blocks_ += 10;
   }
 
   if (radius_add_outer_shell_ > outer_radius_domain) {
+    std::cout << "adding additional outer shell" << std::endl;
     number_of_blocks_ += 10;
   }
-
+  std::cout << "Number of blocks as member variable : " << number_of_blocks_
+            << std::endl;
   // For each object whose interior is not excised, add 1 block
   if (not object_A_.is_excised()) {
     number_of_blocks_++;
@@ -225,6 +230,8 @@ BinaryCompactObject::BinaryCompactObject(
   add_object_region("ObjectB", "Shell");  // 6 blocks
   add_object_region("ObjectB", "Cube");   // 6 blocks
   add_outer_region("EnvelopingCube");     // 10 blocks
+  std::cout << "Value of need cube to sphere transition: "
+            << need_cube_to_sphere_transition_ << std::endl;
   if (need_cube_to_sphere_transition_) {
     add_outer_region("CubedShell");  // 10 blocks
   }
@@ -243,6 +250,7 @@ BinaryCompactObject::BinaryCompactObject(
                                    << ") doesn't match number of blocks ("
                                    << number_of_blocks_ << ").");
 
+  std::cout << "Block names: " << block_names_ << std::endl;
   // Expand initial refinement and number of grid points over all blocks
   const ExpandOverBlocks<size_t, 3> expand_over_blocks{block_names_,
                                                        block_groups_};
@@ -596,6 +604,7 @@ Domain<3> BinaryCompactObject::create_domain() const {
               translation_B));
     }
   }
+  // std::cout<<"Number of maps: "<<maps.size()<<std::endl;
 
   // Excision spheres
   // - Block 0 through 5 enclose object A, and 12 through 17 enclose object B.
@@ -628,8 +637,12 @@ Domain<3> BinaryCompactObject::create_domain() const {
   }
 
   const size_t num_additional_layers =
-    need_cube_to_sphere_transition_ +
-    (radius_add_outer_shell_ > outer_radius_domain_);
+      need_cube_to_sphere_transition_ +
+      (radius_add_outer_shell_ > outer_radius_domain_ ? 1 : 0);
+  std::cout << "num_additional_layers: " << num_additional_layers << std::endl;
+  std::cout << "radius_add_outer_shell_: " << radius_add_outer_shell_
+            << std::endl;
+  std::cout << "outer_radius_domain_: " << outer_radius_domain_ << std::endl;
   const size_t num_biradial_layers = 2 + num_additional_layers;
   Domain<3> domain{std::move(maps),
                    corners_for_biradially_layered_domains(
@@ -750,6 +763,7 @@ Domain<3> BinaryCompactObject::create_domain() const {
     }
 
     // Finally, inject the time dependent maps into the corresponding blocks
+    std::cout << number_of_blocks_ << std::endl;
     for (size_t block = 0; block < number_of_blocks_; ++block) {
       domain.inject_time_dependent_map_for_block(block,
                                                  std::move(block_maps[block]));
