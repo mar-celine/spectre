@@ -28,6 +28,7 @@
 #include "Domain/CoordinateMaps/ProductMaps.tpp"
 #include "Domain/CoordinateMaps/TimeDependent/ProductMaps.hpp"
 #include "Domain/CoordinateMaps/TimeDependent/ProductMaps.tpp"
+#include "Domain/CoordinateMaps/TimeDependent/Shape.hpp"
 #include "Domain/CoordinateMaps/TimeDependent/Translation.hpp"
 #include "Domain/CoordinateMaps/Wedge.hpp"
 #include "Domain/CreateInitialElement.hpp"
@@ -426,6 +427,7 @@ void test_shell_boundaries() {
         {domain::CoordinateMaps::Distribution::Linear},
         ShellWedges::All,
         std::unique_ptr<domain::creators::time_dependence::TimeDependence<3>>{},
+        std::optional<gr::Solutions::KerrHorizon>{},
         create_inner_boundary_condition(),
         create_outer_boundary_condition()};
     test_physical_separation(
@@ -639,6 +641,7 @@ void test_shell_boundaries_aspect_ratio() {
       {domain::CoordinateMaps::Distribution::Linear},
       ShellWedges::All,
       std::unique_ptr<domain::creators::time_dependence::TimeDependence<3>>{},
+      std::optional<gr::Solutions::KerrHorizon>{},
       create_inner_boundary_condition(),
       create_outer_boundary_condition()};
   test_physical_separation(shell_boundary_condition.create_domain().blocks());
@@ -730,6 +733,7 @@ void test_shell_boundaries_logarithmic_map() {
       radial_distribution,
       ShellWedges::All,
       std::unique_ptr<domain::creators::time_dependence::TimeDependence<3>>{},
+      std::optional<gr::Solutions::KerrHorizon>{},
       create_inner_boundary_condition(),
       create_outer_boundary_condition()};
   test_physical_separation(shell_boundary_condition.create_domain().blocks());
@@ -746,6 +750,7 @@ void test_shell_boundaries_logarithmic_map() {
           ShellWedges::All,
           std::unique_ptr<
               domain::creators::time_dependence::TimeDependence<3>>{},
+          std::optional<gr::Solutions::KerrHorizon>{},
           std::make_unique<TestHelpers::domain::BoundaryConditions::
                                TestPeriodicBoundaryCondition<3>>(),
           create_outer_boundary_condition(), Options::Context{false, {}, 1, 1}),
@@ -758,6 +763,8 @@ void test_shell_boundaries_logarithmic_map() {
           ShellWedges::All,
           std::unique_ptr<
               domain::creators::time_dependence::TimeDependence<3>>{},
+          std::optional<gr::Solutions::KerrHorizon>{},
+
           create_inner_boundary_condition(),
           std::make_unique<TestHelpers::domain::BoundaryConditions::
                                TestPeriodicBoundaryCondition<3>>(),
@@ -771,6 +778,8 @@ void test_shell_boundaries_logarithmic_map() {
           ShellWedges::All,
           std::unique_ptr<
               domain::creators::time_dependence::TimeDependence<3>>{},
+          std::optional<gr::Solutions::KerrHorizon>{},
+
           create_inner_boundary_condition(),
           std::make_unique<TestHelpers::domain::BoundaryConditions::
                                TestNoneBoundaryCondition<3>>(),
@@ -785,6 +794,8 @@ void test_shell_boundaries_logarithmic_map() {
           ShellWedges::All,
           std::unique_ptr<
               domain::creators::time_dependence::TimeDependence<3>>{},
+          std::optional<gr::Solutions::KerrHorizon>{},
+
           std::make_unique<TestHelpers::domain::BoundaryConditions::
                                TestNoneBoundaryCondition<3>>(),
           create_outer_boundary_condition(), Options::Context{false, {}, 1, 1}),
