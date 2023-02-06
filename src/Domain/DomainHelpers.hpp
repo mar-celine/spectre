@@ -173,6 +173,7 @@ std::vector<domain::CoordinateMaps::Wedge<3>> sph_wedge_coordinate_maps(
 std::vector<domain::CoordinateMaps::Frustum> frustum_coordinate_maps(
     double length_inner_cube, double length_outer_cube,
     bool use_equiangular_map,
+    domain::CoordinateMaps::Distribution radial_distribution,
     const std::array<double, 3>& origin_preimage = {{0.0, 0.0, 0.0}},
     double projective_scale_factor = 1.0, double sphericity = 0.0);
 

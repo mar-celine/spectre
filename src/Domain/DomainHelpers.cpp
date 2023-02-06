@@ -680,6 +680,7 @@ std::vector<domain::CoordinateMaps::Wedge<3>> sph_wedge_coordinate_maps(
 std::vector<domain::CoordinateMaps::Frustum> frustum_coordinate_maps(
     const double length_inner_cube, const double length_outer_cube,
     const bool use_equiangular_map,
+    const domain::CoordinateMaps::Distribution radial_distribution,
     const std::array<double, 3>& origin_preimage,
     const double projective_scale_factor, const double sphericity) {
   ASSERT(length_inner_cube < 0.5 * length_outer_cube,
@@ -715,6 +716,7 @@ std::vector<domain::CoordinateMaps::Frustum> frustum_coordinate_maps(
         top,
         gsl::at(frustum_orientations, i),
         use_equiangular_map,
+        radial_distribution,
         projective_scale_factor,
         false,
         sphericity});
@@ -729,6 +731,7 @@ std::vector<domain::CoordinateMaps::Frustum> frustum_coordinate_maps(
                                   top,
                                   gsl::at(frustum_orientations, i),
                                   use_equiangular_map,
+                                  radial_distribution,
                                   projective_scale_factor,
                                   false,
                                   sphericity});
@@ -746,6 +749,7 @@ std::vector<domain::CoordinateMaps::Frustum> frustum_coordinate_maps(
                                 top,
                                 frustum_orientations[4],
                                 use_equiangular_map,
+                                radial_distribution,
                                 projective_scale_factor,
                                 false,
                                 sphericity});
@@ -762,6 +766,7 @@ std::vector<domain::CoordinateMaps::Frustum> frustum_coordinate_maps(
                                 top,
                                 frustum_orientations[5],
                                 use_equiangular_map,
+                                radial_distribution,
                                 projective_scale_factor,
                                 false,
                                 sphericity});

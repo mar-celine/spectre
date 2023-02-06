@@ -13,6 +13,7 @@
 
 #include "Domain/BoundaryConditions/BoundaryCondition.hpp"
 #include "Domain/BoundaryConditions/GetBoundaryConditionsBase.hpp"
+#include "Domain/CoordinateMaps/Distribution.hpp"
 #include "Domain/Creators/DomainCreator.hpp"  // IWYU pragma: keep
 #include "Domain/Domain.hpp"
 #include "Domain/Structure/DirectionMap.hpp"
@@ -62,6 +63,13 @@ class FrustalCloak : public DomainCreator<3> {
         "Use equiangular instead of equidistant coordinates."};
   };
 
+  struct RadialDistribution {
+    using type = domain::CoordinateMaps::Distribution;
+    static constexpr Options::String help = {
+        "Select the radial distribution of grid points in the frustal "
+        "cloak. The possible values are `Linear` and `Logarithmic`."};
+  };
+
   struct ProjectionFactor {
     using type = double;
     static constexpr Options::String help = {"Grid compression factor."};
@@ -94,8 +102,8 @@ class FrustalCloak : public DomainCreator<3> {
 
   using basic_options =
       tmpl::list<InitialRefinement, InitialGridPoints, UseEquiangularMap,
-                 ProjectionFactor, LengthInnerCube, LengthOuterCube,
-                 OriginPreimage>;
+                 RadialDistribution, ProjectionFactor, LengthInnerCube,
+                 LengthOuterCube, OriginPreimage>;
 
   template <typename Metavariables>
   using options = tmpl::conditional_t<
@@ -128,6 +136,8 @@ class FrustalCloak : public DomainCreator<3> {
   FrustalCloak(typename InitialRefinement::type initial_refinement_level,
                typename InitialGridPoints::type initial_number_of_grid_points,
                typename UseEquiangularMap::type use_equiangular_map = false,
+               typename RadialDistribution::type radial_distribution =
+                   domain::CoordinateMaps::Distribution::Linear,
                typename ProjectionFactor::type projection_factor = 1.0,
                typename LengthInnerCube::type length_inner_cube = 0.0,
                typename LengthOuterCube::type length_outer_cube = 0.0,
@@ -158,6 +168,8 @@ class FrustalCloak : public DomainCreator<3> {
   typename InitialRefinement::type initial_refinement_level_{};
   typename InitialGridPoints::type initial_number_of_grid_points_{};
   typename UseEquiangularMap::type use_equiangular_map_ = false;
+  typename RadialDistribution::type radial_distribution_ =
+      domain::CoordinateMaps::Distribution::Linear;
   typename ProjectionFactor::type projection_factor_{};
   typename LengthInnerCube::type length_inner_cube_{0.0};
   typename LengthOuterCube::type length_outer_cube_{0.0};

@@ -37,6 +37,7 @@ FrustalCloak::FrustalCloak(
     typename InitialRefinement::type initial_refinement_level,
     typename InitialGridPoints::type initial_number_of_grid_points,
     typename UseEquiangularMap::type use_equiangular_map,
+    typename RadialDistribution::type radial_distribution,
     typename ProjectionFactor::type projection_factor,
     typename LengthInnerCube::type length_inner_cube,
     typename LengthOuterCube::type length_outer_cube,
@@ -50,6 +51,7 @@ FrustalCloak::FrustalCloak(
       initial_number_of_grid_points_(                 // NOLINT
           std::move(initial_number_of_grid_points)),  // NOLINT
       use_equiangular_map_(use_equiangular_map),      // NOLINT
+      radial_distribution_(radial_distribution),      // NOLINT
       projection_factor_(projection_factor),          // NOLINT
       length_inner_cube_(length_inner_cube),          // NOLINT
       length_outer_cube_(length_outer_cube),          // NOLINT
@@ -76,8 +78,8 @@ Domain<3> FrustalCloak::create_domain() const {
       coord_maps = domain::make_vector_coordinate_map_base<Frame::BlockLogical,
                                                            Frame::Inertial, 3>(
           frustum_coordinate_maps(length_inner_cube_, length_outer_cube_,
-                                  use_equiangular_map_, origin_preimage_,
-                                  projection_factor_));
+                                  use_equiangular_map_, radial_distribution_,
+                                  origin_preimage_, projection_factor_));
   return Domain<3>{std::move(coord_maps),
                    corners_for_biradially_layered_domains(
                        0, 1, false, false, {{1, 2, 3, 4, 5, 6, 7, 8}})};

@@ -419,10 +419,10 @@ Domain<3> BinaryCompactObject::create_domain() const {
   // origin to account for their center of mass, the enclosing frustums are
   // centered at the origin.
   Maps maps_frustums = domain::make_vector_coordinate_map_base<
-      Frame::BlockLogical, Frame::Inertial, 3>(
-      frustum_coordinate_maps(length_inner_cube_, length_outer_cube_,
-                              use_equiangular_map_, {{-translation_, 0.0, 0.0}},
-                              projective_scale_factor_, frustum_sphericity_));
+      Frame::BlockLogical, Frame::Inertial, 3>(frustum_coordinate_maps(
+      length_inner_cube_, length_outer_cube_, use_equiangular_map_,
+      domain::CoordinateMaps::Distribution::Linear, {{-translation_, 0.0, 0.0}},
+      projective_scale_factor_, frustum_sphericity_));
   std::move(maps_frustums.begin(), maps_frustums.end(),
             std::back_inserter(maps));
 

@@ -78,6 +78,8 @@ void test_factory() {
 void test_connectivity() {
   const size_t refinement = 1;
   const std::array<size_t, 2> grid_points = {{6, 5}};
+  const domain::CoordinateMaps::Distribution radial_distribution =
+      domain::CoordinateMaps::Distribution::Linear;
   const double projective_scale_factor = 0.3;
   const double length_inner_cube = 15.5;
   const double length_outer_cube = 42.4;
@@ -89,6 +91,7 @@ void test_connectivity() {
           refinement,
           grid_points,
           use_equiangular_map,
+          radial_distribution,
           projective_scale_factor,
           length_inner_cube,
           length_outer_cube,
@@ -101,8 +104,9 @@ void test_connectivity() {
 
   CHECK_THROWS_WITH(
       domain::creators::FrustalCloak(
-          refinement, grid_points, true, projective_scale_factor,
-          length_inner_cube, length_outer_cube, origin_preimage,
+          refinement, grid_points, true, radial_distribution,
+          projective_scale_factor, length_inner_cube, length_outer_cube,
+          origin_preimage,
           std::make_unique<TestHelpers::domain::BoundaryConditions::
                                TestPeriodicBoundaryCondition<3>>(),
           Options::Context{false, {}, 1, 1}),
@@ -110,8 +114,9 @@ void test_connectivity() {
           "Cannot have periodic boundary conditions with a frustal cloak"));
   CHECK_THROWS_WITH(
       domain::creators::FrustalCloak(
-          refinement, grid_points, true, projective_scale_factor,
-          length_inner_cube, length_outer_cube, origin_preimage,
+          refinement, grid_points, true, radial_distribution,
+          projective_scale_factor, length_inner_cube, length_outer_cube,
+          origin_preimage,
           std::make_unique<TestHelpers::domain::BoundaryConditions::
                                TestNoneBoundaryCondition<3>>(),
           Options::Context{false, {}, 1, 1}),

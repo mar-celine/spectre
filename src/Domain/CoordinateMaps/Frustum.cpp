@@ -23,18 +23,22 @@
 #include "Utilities/GenerateInstantiations.hpp"
 #include "Utilities/MakeWithValue.hpp"
 
+#include <iostream>
+
 namespace domain::CoordinateMaps {
 
 Frustum::Frustum(const std::array<std::array<double, 2>, 4>& face_vertices,
                  const double lower_bound, const double upper_bound,
                  OrientationMap<3> orientation_of_frustum,
                  const bool with_equiangular_map,
+                 const Distribution radial_distribution,
                  const double projective_scale_factor,
                  const bool auto_projective_scale_factor,
                  const double sphericity, const double transition_phi)
     // clang-tidy: trivially copyable
     : orientation_of_frustum_(std::move(orientation_of_frustum)),  // NOLINT
       with_equiangular_map_(with_equiangular_map),
+      radial_distribution_(radial_distribution),
       is_identity_(face_vertices ==
                        std::array<std::array<double, 2>, 4>{{{{-1.0, -1.0}},
                                                              {{1.0, 1.0}},
@@ -115,7 +119,15 @@ Frustum::Frustum(const std::array<std::array<double, 2>, 4>& face_vertices,
                       abs(lower_x_lower_base), abs(lower_y_lower_base),
                       abs(upper_bound), abs(lower_bound)}) *
             sqrt(3.0);
+  if (projective_scale_factor != 1.0) {
+    ASSERT(radial_distribution_ == Distribution::Projective,
+           "If using a projective_scale_factor_ other than zero, Distribution "
+           "must be Projective.");
+  }
   if (auto_projective_scale_factor) {
+    ASSERT(radial_distribution_ == Distribution::Projective,
+           "If using auto_projective_scale_factor, Distribution must be "
+           "Projective.");
     with_projective_map_ = true;
     const double w_delta = sqrt(((upper_x_lower_base - lower_x_lower_base) *
                                  (upper_y_lower_base - lower_y_lower_base)) /
@@ -134,10 +146,31 @@ std::array<tt::remove_cvref_wrap_t<T>, 3> Frustum::operator()(
   const ReturnType& xi = source_coords[0];
   const ReturnType& eta = source_coords[1];
   const ReturnType& zeta = source_coords[2];
-  const ReturnType cap_zeta =
-      with_projective_map_
-          ? (w_minus_ + w_plus_ * zeta) / (w_plus_ + w_minus_ * zeta)
-          : zeta;
+  ReturnType cap_zeta;
+  if (radial_distribution_ == Distribution::Linear) {
+    cap_zeta = with_projective_map_
+                   ? (w_minus_ + w_plus_ * zeta) / (w_plus_ + w_minus_ * zeta)
+                   : zeta;
+    // cap_zeta = zeta;
+  } else if (radial_distribution_ == Distribution::Projective) {
+    cap_zeta = with_projective_map_
+                   ? (w_minus_ + w_plus_ * zeta) / (w_plus_ + w_minus_ * zeta)
+                   : zeta;
+    // cap_zeta = (w_minus_ + w_plus_ * zeta) / (w_plus_ + w_minus_ * zeta);
+  } else if (radial_distribution_ == Distribution::Logarithmic) {
+    const double radius_inner = sqrt(square(sigma_x_) + square(sigma_y_));
+    const double sigma_r = 0.5 * (radius_inner + radius_);
+    const double delta_r = 0.5 * (radius_ - radius_inner);
+    cap_zeta = (exp(0.5 * (1.0 - zeta) * log(radius_inner) +
+                    0.5 * (1.0 + zeta) * log(radius_)) -
+                sigma_r) /
+               delta_r;
+  } else {
+    ERROR(
+        "Only the distributions Linear, Projective, and Logarithmic are "
+        "supported.");
+    // cap_zeta = zeta;
+  }
   const ReturnType cap_xi_zero = with_equiangular_map_ ? tan(M_PI_4 * xi) : xi;
   const double one_plus_phi_square = 1.0 + phi_ * phi_;
   const ReturnType cap_xi_upper =
@@ -207,10 +240,26 @@ std::optional<std::array<double, 3>> Frustum::inverse(
     logical_coords[0] = atan(logical_coords[0]) / M_PI_4;
     logical_coords[1] = atan(logical_coords[1]) / M_PI_4;
   }
+
   if (with_projective_map_) {
     logical_coords[2] = (-w_minus_ + w_plus_ * logical_coords[2]) /
                         (w_plus_ - w_minus_ * logical_coords[2]);
   }
+  /*
+    if (radial_distribution_ == Distribution::Projective) {
+      logical_coords[2] = (-w_minus_ + w_plus_ * logical_coords[2]) /
+                          (w_plus_ - w_minus_ * logical_coords[2]);
+    } else if (radial_distribution_ == Distribution::Logarithmic) {
+    const double radius_inner = sqrt(square(sigma_x_)+square(sigma_y_));
+    const double sigma_r = 0.5 * (radius_inner + radius_);
+    const double delta_r = 0.5 * (radius_ - radius_inner);
+      logical_coords[2] =
+        (2.0 * log(sigma_r + delta_r * logical_coords[2]) - log(radius_ *
+    radius_inner)) / log(radius_ / radius_inner); } else {
+      ASSERT(radial_distribution_ == Distribution::Linear, "Only the
+    distributions Linear, Projective, and Logarithmic are supported.");
+    }
+  */
   if (sphericity_ > 0.0 or phi_ != 0.0) {
     // The physical_coords sometimes have magnitudes slightly
     // larger than radius_ due to roundoff error, this 1.0e-4 margin
@@ -281,10 +330,32 @@ tnsr::Ij<tt::remove_cvref_wrap_t<T>, 3, Frame::NoFrame> Frustum::jacobian(
   const ReturnType& xi = source_coords[0];
   const ReturnType& eta = source_coords[1];
   const ReturnType& zeta = source_coords[2];
-  const ReturnType cap_zeta =
-      with_projective_map_
-          ? (w_minus_ + w_plus_ * zeta) / (w_plus_ + w_minus_ * zeta)
-          : zeta;
+
+  ReturnType cap_zeta;
+  if (radial_distribution_ == Distribution::Linear) {
+    cap_zeta = with_projective_map_
+                   ? (w_minus_ + w_plus_ * zeta) / (w_plus_ + w_minus_ * zeta)
+                   : zeta;
+    // cap_zeta = zeta;
+  } else if (radial_distribution_ == Distribution::Projective) {
+    cap_zeta = with_projective_map_
+                   ? (w_minus_ + w_plus_ * zeta) / (w_plus_ + w_minus_ * zeta)
+                   : zeta;
+    // cap_zeta = (w_minus_ + w_plus_ * zeta) / (w_plus_ + w_minus_ * zeta);
+  } else if (radial_distribution_ == Distribution::Logarithmic) {
+    const double radius_inner = sqrt(square(sigma_x_) + square(sigma_y_));
+    const double sigma_r = 0.5 * (radius_inner + radius_);
+    const double delta_r = 0.5 * (radius_ - radius_inner);
+    cap_zeta = (exp(0.5 * (1.0 - zeta) * log(radius_inner) +
+                    0.5 * (1.0 + zeta) * log(radius_)) -
+                sigma_r) /
+               delta_r;
+  } else {
+    ERROR(
+        "Only the distributions Linear, Projective, and Logarithmic are "
+        "supported.");
+  }
+
   const ReturnType& cap_xi_zero = with_equiangular_map_ ? tan(M_PI_4 * xi) : xi;
   const double one_plus_phi_square = 1.0 + phi_ * phi_;
   const ReturnType cap_xi_upper =
@@ -318,10 +389,29 @@ tnsr::Ij<tt::remove_cvref_wrap_t<T>, 3, Frame::NoFrame> Frustum::jacobian(
   const ReturnType cap_eta_deriv = with_equiangular_map_
                                        ? M_PI_4 * (1.0 + square(cap_eta))
                                        : make_with_value<ReturnType>(eta, 1.0);
-  const ReturnType cap_zeta_deriv =
-      with_projective_map_ ? (square(w_plus_) - square(w_minus_)) /
-                                 square(w_plus_ + zeta * w_minus_)
-                           : make_with_value<ReturnType>(zeta, 1.0);
+  ReturnType cap_zeta_deriv;
+  if (radial_distribution_ == Distribution::Linear) {
+    cap_zeta_deriv = make_with_value<ReturnType>(eta, 1.0);
+  } else if (radial_distribution_ == Distribution::Projective) {
+    cap_zeta_deriv = with_projective_map_
+                         ? (square(w_plus_) - square(w_minus_)) /
+                               square(w_plus_ + zeta * w_minus_)
+                         : make_with_value<ReturnType>(zeta, 1.0);
+    // cap_zeta_deriv = make_with_value<ReturnType>(eta, 1.0);
+    // cap_zeta_deriv = (square(w_plus_) - square(w_minus_)) /
+    //                             square(w_plus_ + zeta * w_minus_);
+  } else if (radial_distribution_ == Distribution::Logarithmic) {
+    const double radius_inner = sqrt(square(sigma_x_) + square(sigma_y_));
+    const double one_over_delta_r = 2.0 / (radius_ - radius_inner);
+    cap_zeta_deriv = one_over_delta_r *
+                     exp(0.5 * (1.0 - zeta) * log(radius_inner) +
+                         0.5 * (1.0 + zeta) * log(radius_)) *
+                     0.5 * log(radius_ / radius_inner);
+  } else {
+    ERROR(
+        "Only the distributions Linear, Projective, and Logarithmic are "
+        "supported.");
+  }
 
   auto jacobian_matrix =
       make_with_value<tnsr::Ij<tt::remove_cvref_wrap_t<T>, 3, Frame::NoFrame>>(
@@ -363,10 +453,17 @@ tnsr::Ij<tt::remove_cvref_wrap_t<T>, 3, Frame::NoFrame> Frustum::jacobian(
            delta_y_zeta_ + delta_y_eta_zeta_ * cap_eta,
            make_with_value<ReturnType>(zeta, delta_z_zeta_)}});
 
-  if (with_projective_map_) {
+  if (radial_distribution_ ==
+      Distribution::
+          Projective /*or radial_distribution_ == Distribution::Logarithmic*/) {
     dX_dzeta[0] *= cap_zeta_deriv;
     dX_dzeta[1] *= cap_zeta_deriv;
     dX_dzeta[2] *= cap_zeta_deriv;
+  } else {
+    ASSERT(radial_distribution_ == Distribution::Linear or
+               radial_distribution_ == Distribution::Logarithmic,
+           "Only the distributions Linear, Projective, and Logarithmic are "
+           "supported.");
   }
 
   get<0, 2>(jacobian_matrix) = dX_dzeta[0];
@@ -447,11 +544,16 @@ tnsr::Ij<tt::remove_cvref_wrap_t<T>, 3, Frame::NoFrame> Frustum::jacobian(
             std::array<ReturnType, 3>{
                 {flat_frustum_x, flat_frustum_y,
                  make_with_value<ReturnType>(zeta, flat_frustum_z)}});
-
-    if (with_projective_map_) {
+    if (radial_distribution_ == Distribution::Projective
+        /*or radial_distribution_ == Distribution::Logarithmic*/) {
       delta_dX_dzeta[0] *= cap_zeta_deriv;
       delta_dX_dzeta[1] *= cap_zeta_deriv;
       delta_dX_dzeta[2] *= cap_zeta_deriv;
+    } else {
+      ASSERT(radial_distribution_ == Distribution::Linear or
+                 radial_distribution_ == Distribution::Logarithmic,
+             "Only the distributions Linear, Projective, and Logarithmic are "
+             "supported.");
     }
 
     get<0, 2>(jacobian_matrix) += delta_dX_dzeta[0];

@@ -373,6 +373,8 @@ void test_all_frustum_directions() {
           .inverse_map(),
       origin_preimage);
 
+  const CoordinateMaps::Distribution radial_distribution =
+      CoordinateMaps::Distribution::Linear;
   const double projective_scale_factor = 0.3;
   for (const bool use_equiangular_map : {true, false}) {
     const auto expected_coord_maps = make_vector(
@@ -385,6 +387,7 @@ void test_all_frustum_directions() {
             top,
             OrientationMap<3>{},
             use_equiangular_map,
+            radial_distribution,
             projective_scale_factor},
         FrustumMap{
             {{{{-displacement2[0], -lower - displacement2[1]}},
@@ -395,6 +398,7 @@ void test_all_frustum_directions() {
             top,
             OrientationMap<3>{},
             use_equiangular_map,
+            radial_distribution,
             projective_scale_factor},
         FrustumMap{
             {{{{-2.0 * lower - displacement3[0], -lower - displacement3[1]}},
@@ -407,6 +411,7 @@ void test_all_frustum_directions() {
                 {Direction<3>::upper_xi(), Direction<3>::lower_eta(),
                  Direction<3>::lower_zeta()}}},
             use_equiangular_map,
+            radial_distribution,
             projective_scale_factor},
         FrustumMap{
             {{{{-displacement4[0], -lower - displacement4[1]}},
@@ -419,6 +424,7 @@ void test_all_frustum_directions() {
                 {Direction<3>::upper_xi(), Direction<3>::lower_eta(),
                  Direction<3>::lower_zeta()}}},
             use_equiangular_map,
+            radial_distribution,
             projective_scale_factor},
         FrustumMap{
             {{{{-2.0 * lower - displacement5[0], -lower - displacement5[1]}},
@@ -431,6 +437,7 @@ void test_all_frustum_directions() {
                 {Direction<3>::upper_xi(), Direction<3>::upper_zeta(),
                  Direction<3>::lower_eta()}}},
             use_equiangular_map,
+            radial_distribution,
             projective_scale_factor},
         FrustumMap{
             {{{{-displacement6[0], -lower - displacement6[1]}},
@@ -443,6 +450,7 @@ void test_all_frustum_directions() {
                 {Direction<3>::upper_xi(), Direction<3>::upper_zeta(),
                  Direction<3>::lower_eta()}}},
             use_equiangular_map,
+            radial_distribution,
             projective_scale_factor},
         FrustumMap{
             {{{{-2.0 * lower - displacement7[0], -lower - displacement7[1]}},
@@ -455,6 +463,7 @@ void test_all_frustum_directions() {
                 {Direction<3>::upper_xi(), Direction<3>::lower_zeta(),
                  Direction<3>::upper_eta()}}},
             use_equiangular_map,
+            radial_distribution,
             projective_scale_factor},
         FrustumMap{
             {{{{-displacement8[0], -lower - displacement8[1]}},
@@ -467,6 +476,7 @@ void test_all_frustum_directions() {
                 {Direction<3>::upper_xi(), Direction<3>::lower_zeta(),
                  Direction<3>::upper_eta()}}},
             use_equiangular_map,
+            radial_distribution,
             projective_scale_factor},
         // Frustum on right half in the +x direction
         FrustumMap{{{{{-lower - displacement9[0], -lower - displacement9[1]}},
@@ -479,6 +489,7 @@ void test_all_frustum_directions() {
                        {Direction<3>::upper_zeta(), Direction<3>::upper_xi(),
                         Direction<3>::upper_eta()}}},
                    use_equiangular_map,
+                   radial_distribution,
                    projective_scale_factor},
         // Frustum on left half in the -x direction
         FrustumMap{{{{{-lower - displacement10[0], -lower - displacement10[1]}},
@@ -491,10 +502,12 @@ void test_all_frustum_directions() {
                        {Direction<3>::lower_zeta(), Direction<3>::lower_xi(),
                         Direction<3>::upper_eta()}}},
                    use_equiangular_map,
+                   radial_distribution,
                    projective_scale_factor});
 
-    const auto maps = frustum_coordinate_maps(
-        2.0 * lower, 2.0 * top, use_equiangular_map, origin_preimage, 0.3);
+    const auto maps =
+        frustum_coordinate_maps(2.0 * lower, 2.0 * top, use_equiangular_map,
+                                radial_distribution, origin_preimage, 0.3);
     CHECK(maps == expected_coord_maps);
   }
 }
@@ -506,10 +519,12 @@ void test_frustrum_errors() {
         const double length_inner_cube = 0.9;
         const double length_outer_cube = 1.5;
         const bool use_equiangular_map = true;
+        const CoordinateMaps::Distribution radial_distribution =
+            CoordinateMaps::Distribution::Linear;
         const std::array<double, 3> origin_preimage = {{0.0, 0.0, 0.0}};
-        static_cast<void>(
-            frustum_coordinate_maps(length_inner_cube, length_outer_cube,
-                                    use_equiangular_map, origin_preimage));
+        static_cast<void>(frustum_coordinate_maps(
+            length_inner_cube, length_outer_cube, use_equiangular_map,
+            radial_distribution, origin_preimage));
       }()),
       Catch::Contains("The outer cube is too small! The inner cubes will "
                       "pierce the surface of the outer cube."));
@@ -519,10 +534,12 @@ void test_frustrum_errors() {
         const double length_inner_cube = 1.0;
         const double length_outer_cube = 3.0;
         const bool use_equiangular_map = true;
+        const CoordinateMaps::Distribution radial_distribution =
+            CoordinateMaps::Distribution::Linear;
         const std::array<double, 3> origin_preimage = {{0.6, 0.0, 0.0}};
-        static_cast<void>(
-            frustum_coordinate_maps(length_inner_cube, length_outer_cube,
-                                    use_equiangular_map, origin_preimage));
+        static_cast<void>(frustum_coordinate_maps(
+            length_inner_cube, length_outer_cube, use_equiangular_map,
+            radial_distribution, origin_preimage));
       }()),
       Catch::Contains("The current choice for `origin_preimage` results in the "
                       "inner cubes piercing the surface of the outer cube."));

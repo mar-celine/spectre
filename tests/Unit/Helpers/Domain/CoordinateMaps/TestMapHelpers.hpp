@@ -389,11 +389,16 @@ void test_coordinate_map_argument_types(
  * \ingroup TestingFrameworkGroup
  * \brief Given a Map `map`, checks that the inverse map gives expected results
  */
+#include <iostream>
 template <typename Map, typename T>
 void test_inverse_map(const Map& map,
                       const std::array<T, Map::dim>& test_point) {
   INFO("Test inverse map");
   CAPTURE(test_point);
+  std::cout << "The test point is: " << test_point << std::endl;
+  std::cout << "The mapped point is: " << map(test_point) << std::endl;
+  std::cout << "The inverse of the mapped point is: "
+            << map.inverse(map(test_point)) << std::endl;
   const auto expected_test_point = map.inverse(map(test_point));
   REQUIRE(expected_test_point.has_value());
   CHECK_ITERABLE_APPROX(test_point, expected_test_point.value());

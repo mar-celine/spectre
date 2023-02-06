@@ -9,6 +9,7 @@
 #include <optional>
 
 #include "DataStructures/Tensor/TypeAliases.hpp"
+#include "Domain/CoordinateMaps/Distribution.hpp"
 #include "Domain/Structure/OrientationMap.hpp"
 #include "Utilities/TypeTraits/RemoveReferenceWrapper.hpp"
 
@@ -264,6 +265,7 @@ class Frustum {
           double lower_bound, double upper_bound,
           OrientationMap<3> orientation_of_frustum,
           bool with_equiangular_map = false,
+          Distribution radial_distribution = Distribution::Linear,
           double projective_scale_factor = 1.0,
           bool auto_projective_scale_factor = false, double sphericity = 0.0,
           double transition_phi = 0.0);
@@ -309,6 +311,7 @@ class Frustum {
   bool with_equiangular_map_{false};
   bool is_identity_{false};
   bool with_projective_map_{false};
+  Distribution radial_distribution_ = Distribution::Linear;
   double sigma_x_{std::numeric_limits<double>::signaling_NaN()};
   double delta_x_zeta_{std::numeric_limits<double>::signaling_NaN()};
   double delta_x_xi_{std::numeric_limits<double>::signaling_NaN()};
