@@ -331,13 +331,10 @@ class CylindricalShell : public DomainCreator<3> {
       const Options::Context& context = {});
 
   CylindricalShell() = default;
-  CylindricalShell(const CylindricalShell&) =
-      delete;
+  CylindricalShell(const CylindricalShell&) = delete;
   CylindricalShell(CylindricalShell&&) = default;
-  CylindricalShell& operator=(
-      const CylindricalShell&) = delete;
-  CylindricalShell& operator=(CylindricalShell&&) =
-      default;
+  CylindricalShell& operator=(const CylindricalShell&) = delete;
+  CylindricalShell& operator=(CylindricalShell&&) = default;
   ~CylindricalShell() override = default;
 
   Domain<3> create_domain() const override;

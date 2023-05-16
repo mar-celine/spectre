@@ -394,12 +394,12 @@ CylindricalShell::CylindricalShell(
     std::unique_ptr<domain::BoundaryConditions::BoundaryCondition>
         outer_boundary_condition,
     const Options::Context& context)
-    : CylindricalShell(
-          center_A, center_B, radius_A, radius_B, include_inner_sphere_A,
-          include_inner_sphere_B, include_outer_sphere, outer_radius,
-          use_equiangular_map, initial_refinement, initial_grid_points,
-          std::move(inner_boundary_condition),
-          std::move(outer_boundary_condition), context) {
+    : CylindricalShell(center_A, center_B, radius_A, radius_B,
+                       include_inner_sphere_A, include_inner_sphere_B,
+                       include_outer_sphere, outer_radius, use_equiangular_map,
+                       initial_refinement, initial_grid_points,
+                       std::move(inner_boundary_condition),
+                       std::move(outer_boundary_condition), context) {
   // The size map, which is applied from the grid to distorted frame, currently
   // needs to start and stop at certain radii around each excision. If the inner
   // spheres aren't included, the outer radii would have to be in the middle of
@@ -1083,13 +1083,12 @@ CylindricalShell::external_boundary_conditions() const {
   return boundary_conditions;
 }
 
-std::vector<std::array<size_t, 3>>
-CylindricalShell::initial_extents() const {
+std::vector<std::array<size_t, 3>> CylindricalShell::initial_extents() const {
   return initial_grid_points_;
 }
 
-std::vector<std::array<size_t, 3>>
-CylindricalShell::initial_refinement_levels() const {
+std::vector<std::array<size_t, 3>> CylindricalShell::initial_refinement_levels()
+    const {
   return initial_refinement_;
 }
 
