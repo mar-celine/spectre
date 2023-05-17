@@ -10,6 +10,7 @@
 #include "Domain/Creators/Brick.hpp"
 #include "Domain/Creators/Cylinder.hpp"
 #include "Domain/Creators/CylindricalBinaryCompactObject.hpp"
+#include "Domain/Creators/CylindricalShell.hpp"
 #include "Domain/Creators/Factory.hpp"
 #include "Domain/Creators/FrustalCloak.hpp"
 #include "Domain/Creators/RotatedBricks.hpp"
@@ -24,6 +25,7 @@ struct domain_creators<3> {
                  domain::creators::BinaryCompactObject, domain::creators::Brick,
                  domain::creators::Cylinder,
                  domain::creators::CylindricalBinaryCompactObject,
+                 domain::creators::CylindricalShell,
                  domain::creators::FrustalCloak,
                  domain::creators::RotatedBricks, domain::creators::Sphere>;
 };
