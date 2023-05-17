@@ -125,93 +125,32 @@ CylindricalShell::CylindricalShell(
         "Cannot have periodic boundary conditions with a binary domain");
   }
 
-  // The choices made below for the quantities xi, z_cutting_plane_,
-  // and xi_min_sphere_e are the ones made in SpEC, and in the
-  // Appendix of https://arxiv.org/abs/1206.3015.  Other choices could
-  // be made that would still result in a reasonable Domain. In
-  // particular, during a SpEC BBH evolution the excision boundaries
-  // can sometimes get too close to z_cutting_plane_, and the
-  // simulation must be halted and regridded with a different choice
-  // of z_cutting_plane_, so it may be possible to choose a different
-  // initial value of z_cutting_plane_ that reduces the number of such
-  // regrids or eliminates them.
-
-  // xi is the quantity in Eq. (A10) of
-  // https://arxiv.org/abs/1206.3015 that represents how close the
-  // cutting plane is to either center.  Unfortunately, there is a
-  // discrepancy between what xi means in the paper and what it is in
-  // the code.  I (Mark) think that this is a typo in the paper,
-  // because otherwise the domain doesn't make sense.  To fix this,
-  // either Eq. (A9) in the paper should have xi -> 1-xi, or Eq. (A10)
-  // should have x_A and x_B swapped.
-  // Here we will use the same definition of xi in Eq. (A10), but we
-  // will swap xi -> 1-xi in Eq. (A9).
-  // Therefore, xi = 0 means that the cutting plane passes through the center of
-  // object B, and xi = 1 means that the cutting plane passes through
-  // the center of object A.  Note that for |x_A| <= |x_B| (as assumed
-  // above), xi is always <= 1/2.
-  constexpr double xi_min = 0.25;
-  // Same as Eq. (A10)
-  const double xi =
-      std::max(xi_min, std::abs(center_A_[2]) /
-                           (std::abs(center_A_[2]) + std::abs(center_B_[2])));
-
-  // Compute cutting plane
-  // This is Eq. (A9) with xi -> 1-xi.
-  z_cutting_plane_ = cut_spheres_offset_factor_ *
-                     ((1.0 - xi) * center_B_[2] + xi * center_A_[2]);
-
   // outer_radius_A is the outer radius of the inner sphere A, if it exists.
   // If the inner sphere A does not exist, then outer_radius_A is the same
   // as radius_A_.
   // If the inner sphere does exist, the algorithm for computing
   // outer_radius_A is the same as in SpEC when there is one inner shell.
-  outer_radius_A_ =
-      include_inner_sphere_A_
-          ? radius_A_ +
-                0.5 * (std::abs(z_cutting_plane_ - center_A_[2]) - radius_A_)
-          : radius_A_;
+  outer_radius_A_ = include_inner_sphere_A_
+                        ? radius_A_ + 0.5 * (std::abs(center_A_[2]) - radius_A_)
+                        : radius_A_;
 
   // outer_radius_B is the outer radius of the inner sphere B, if it exists.
   // If the inner sphere B does not exist, then outer_radius_B is the same
   // as radius_B_.
   // If the inner sphere does exist, the algorithm for computing
   // outer_radius_B is the same as in SpEC when there is one inner shell.
-  outer_radius_B_ =
-      include_inner_sphere_B_
-          ? radius_B_ +
-                0.5 * (std::abs(z_cutting_plane_ - center_B_[2]) - radius_B_)
-          : radius_B_;
+  outer_radius_B_ = radius_B_;
 
   number_of_blocks_ = 46;
   if (include_inner_sphere_A) {
     number_of_blocks_ += 14;
   }
-  if (include_inner_sphere_B) {
+  /*if (include_inner_sphere_B) {
     number_of_blocks_ += 14;
-  }
+  }*/
   /*  if (include_outer_sphere) {
       number_of_blocks_ += 18;
     }*/
-
-  // Add SphereE blocks if necessary.  Note that
-  // https://arxiv.org/abs/1206.3015 has a mistake just above
-  // Eq. (A.11) and the same mistake above Eq. (A.20), where it lists
-  // the wrong mass ratio (for BBHs). The correct statement is that if
-  // xi <= 1/3, this means that the mass ratio (for BBH) is large (>=2)
-  // and we should add SphereE blocks.
-  constexpr double xi_min_sphere_e = 1.0 / 3.0;
-  if (xi <= xi_min_sphere_e) {
-    // The following ERROR will be removed in an upcoming PR that
-    // will support higher mass ratios.
-    ERROR(
-        "We currently only support domains where objects A and B are "
-        "approximately the same size, and approximately the same distance from "
-        "the origin.  More technically, we support xi > "
-        << xi_min_sphere_e << ", but the value of xi is " << xi
-        << ". Support for more general domains will be added in the near "
-           "future");
-  }
 
   // Create block names and groups
   auto add_filled_cylinder_name = [this](const std::string& prefix,
@@ -282,14 +221,14 @@ CylindricalShell::CylindricalShell(
     // 4 blocks
     add_cylinder_name("InnerSphereEA", "InnerSphereA");
   }
-  if (include_inner_sphere_B) {
+  /*if (include_inner_sphere_B) {
     // 5 blocks
     add_filled_cylinder_name("InnerSphereEB", "InnerSphereB");
     // 5 blocks
     add_filled_cylinder_name("InnerSphereMB", "InnerSphereB");
     // 4 blocks
     add_cylinder_name("InnerSphereEB", "InnerSphereB");
-  }
+  }*/
 
   // Expand initial refinement over all blocks
   const ExpandOverBlocks<size_t, 3> expand_over_blocks{block_names_,
@@ -361,12 +300,12 @@ CylindricalShell::CylindricalShell(
     }
     current_block += 4;
   }
-  if (include_inner_sphere_B) {
+  /*if (include_inner_sphere_B) {
     for (size_t block = 0; block < 10; ++block) {
       swap_refinement_and_grid_points_xi_zeta(current_block++);
     }
     current_block += 4;
-  }
+  }*/
 }
 
 CylindricalShell::CylindricalShell(
@@ -425,8 +364,7 @@ Domain<3> CylindricalShell::create_domain() const {
       Direction<3>::lower_zeta(), Direction<3>::upper_eta(),
       Direction<3>::upper_xi()}};
 
-  const std::array<double, 3> center_cutting_plane = {0.0, 0.0,
-                                                      z_cutting_plane_};
+  const std::array<double, 3> center_cutting_plane = {0.0, 0.0, 0.0};
 
   // The labels EA, EB, EE, etc are from Figure 20 of
   // https://arxiv.org/abs/1206.3015
@@ -440,16 +378,11 @@ Domain<3> CylindricalShell::create_domain() const {
   // radius_MB is eq. A16 or A23 in the paper (depending on whether
   // the EE spheres exist), and is the radius of the circle where the EB
   // sphere intersects the cutting plane.
-  const std::array<double, 3> center_EA = {
-      0.0, 0.0, cut_spheres_offset_factor_ * center_A_[2]};
-  const std::array<double, 3> center_EB = {
-      0.0, 0.0, center_B_[2] * cut_spheres_offset_factor_};
-  const double radius_MB =
-      std::abs(cut_spheres_offset_factor_ * center_B_[2] - z_cutting_plane_);
-  const double radius_EA =
-      sqrt(square(center_EA[2] - z_cutting_plane_) + square(radius_MB));
-  const double radius_EB =
-      sqrt(2.0) * std::abs(center_EB[2] - z_cutting_plane_);
+  const std::array<double, 3> center_EA = {0.0, 0.0, center_A_[2]};
+  const std::array<double, 3> center_EB = {0.0, 0.0, center_B_[2]};
+  const double radius_MB = std::abs(center_B_[2]);
+  const double radius_EA = sqrt(square(center_EA[2]) + square(radius_MB));
+  const double radius_EB = sqrt(2.0) * std::abs(center_EB[2]);
 
   // Construct vector<CoordMap>s that go from logical coordinates to
   // various blocks making up a unit right cylinder.  These blocks are
@@ -575,8 +508,7 @@ Domain<3> CylindricalShell::create_domain() const {
   // defined by https://arxiv.org/abs/1206.3015 in the bulleted list
   // after Eq. (A.19) EXCEPT that here we use a factor of 1.6 instead of 1.5
   // to put the plane farther from center_A.
-  const double z_cut_CA_lower =
-      z_cutting_plane_ + 1.6 * (center_EA[2] - z_cutting_plane_);
+  const double z_cut_CA_lower = 1.6 * center_EA[2];
   // z_cut_CA_upper is the upper z_plane position for the CA endcap,
   // which isn't defined in https://arxiv.org/abs/1206.3015 (because the
   // maps are different).  We choose this plane to make the maps
@@ -611,7 +543,7 @@ Domain<3> CylindricalShell::create_domain() const {
           // LCOV_EXCL_START
           center_EA, make_array<3>(0.0), radius_EA, inner_radius_C,
           // LCOV_EXCL_STOP
-          z_cut_CA_lower, z_cutting_plane_, z_cut_CA_upper, z_cutting_plane_),
+          z_cut_CA_lower, 0.0, z_cut_CA_upper, 0.0),
       CoordinateMaps::DiscreteRotation<3>(rotate_to_x_axis));
 
   // EA Filled Cylinder
@@ -628,7 +560,7 @@ Domain<3> CylindricalShell::create_domain() const {
       // For some reason codecov complains about the next line.
       CoordinateMaps::UniformCylindricalSide(  // LCOV_EXCL_LINE
           center_A_, center_EA, outer_radius_A_, radius_EA, z_cut_EA_upper,
-          z_cut_EA_lower, z_cut_CA_lower, z_cutting_plane_),
+          z_cut_EA_lower, z_cut_CA_lower, 0.0),
       CoordinateMaps::DiscreteRotation<3>(rotate_to_x_axis));
 
   // z_cut_CB_lower is the lower z_plane position for the CB endcap,
@@ -637,8 +569,7 @@ Domain<3> CylindricalShell::create_domain() const {
   // to put the plane farther from center_B.
   // Note here that 'lower' means 'farther from z=-infinity'
   // because we are on the -z side of the cutting plane.
-  const double z_cut_CB_lower =
-      z_cutting_plane_ + 1.6 * (center_EB[2] - z_cutting_plane_);
+  const double z_cut_CB_lower = 1.6 * center_EB[2];
   // z_cut_CB_upper is the upper z_plane position for the CB endcap,
   // which isn't defined in https://arxiv.org/abs/1206.3015 (because the
   // maps are different).  We choose this plane to make the maps
@@ -673,7 +604,7 @@ Domain<3> CylindricalShell::create_domain() const {
       CoordinateMaps::UniformCylindricalSide(
           flip_about_xy_plane(center_B_), flip_about_xy_plane(center_EB),
           outer_radius_B_, radius_EB, -z_cut_EB_upper, -z_cut_EB_lower,
-          -z_cut_CB_lower, -z_cutting_plane_),
+          -z_cut_CB_lower, 0.0),
       CoordinateMaps::DiscreteRotation<3>(rotate_to_minus_x_axis));
 
   // MA Filled Cylinder
@@ -706,8 +637,7 @@ Domain<3> CylindricalShell::create_domain() const {
   add_side_to_list_of_maps(
       CoordinateMaps::UniformCylindricalSide(
           flip_about_xy_plane(center_EB), make_array<3>(0.0), radius_EB,
-          inner_radius_C, -z_cut_CB_lower, -z_cutting_plane_, -z_cut_CB_upper,
-          -z_cutting_plane_),
+          inner_radius_C, -z_cut_CB_lower, 0.0, -z_cut_CB_upper, 0.0),
       CoordinateMaps::DiscreteRotation<3>(rotate_to_minus_x_axis));
 
   if (include_inner_sphere_A_) {
@@ -739,7 +669,7 @@ Domain<3> CylindricalShell::create_domain() const {
             z_cut_lower, z_cut_EA_upper, z_cut_EA_lower),
         CoordinateMaps::DiscreteRotation<3>(rotate_to_x_axis));
   }
-  if (include_inner_sphere_B_) {
+  /*if (include_inner_sphere_B_) {
     // Note here that 'upper' means 'closer to z=-infinity'
     // because we are on the -z side of the cutting plane.
     const double z_cut_upper = center_B_[2] - 0.7 * radius_B_;
@@ -769,7 +699,7 @@ Domain<3> CylindricalShell::create_domain() const {
             radius_B_, outer_radius_B_, -z_cut_upper, -z_cut_lower,
             -z_cut_EB_upper, -z_cut_EB_lower),
         CoordinateMaps::DiscreteRotation<3>(rotate_to_minus_x_axis));
-  }
+  }*/
   // Excision spheres
   std::unordered_map<std::string, ExcisionSphere<3>> excision_spheres{};
 
@@ -808,7 +738,7 @@ Domain<3> CylindricalShell::create_domain() const {
           abutting_directions_A});
 
   std::unordered_map<size_t, Direction<3>> abutting_directions_B;
-  if (include_inner_sphere_B_) {
+  /*if (include_inner_sphere_B_) {
     for (size_t i = 0; i < 10; ++i) {
       // LCOV_EXCL_START
       abutting_directions_B.emplace(first_inner_sphere_block + i,
@@ -821,107 +751,25 @@ Domain<3> CylindricalShell::create_domain() const {
                                     Direction<3>::lower_xi());
       // LCOV_EXCL_STOP
     }
-  } else {
-    for (size_t i = 0; i < 5; ++i) {
-      abutting_directions_B.emplace(18 + i, Direction<3>::lower_zeta());
-      abutting_directions_B.emplace(32 + i, Direction<3>::lower_zeta());
+  }*/ //else {
+  for (size_t i = 0; i < 5; ++i) {
+    abutting_directions_B.emplace(18 + i, Direction<3>::lower_zeta());
+    abutting_directions_B.emplace(32 + i, Direction<3>::lower_zeta());
     }
     for (size_t i = 0; i < 4; ++i) {
       abutting_directions_B.emplace(23 + i, Direction<3>::lower_xi());
     }
-  }
-  excision_spheres.emplace(
-      "ExcisionSphereB",
-      ExcisionSphere<3>{
-          radius_B_,
-          tnsr::I<double, 3, Frame::Grid>(rotate_from_z_to_x_axis(center_B_)),
-          abutting_directions_B});
+    //}
+    excision_spheres.emplace(
+        "ExcisionSphereB",
+        ExcisionSphere<3>{
+            radius_B_,
+            tnsr::I<double, 3, Frame::Grid>(rotate_from_z_to_x_axis(center_B_)),
+            abutting_directions_B});
 
-  Domain<3> domain{std::move(coordinate_maps), std::move(excision_spheres),
-                   block_names_, block_groups_};
-
-  if (time_dependent_options_.has_value()) {
-    ASSERT(include_inner_sphere_A_ and include_inner_sphere_B_,
-           "When using time dependent maps for the CylindricalBBH domain, you "
-           "must include both inner spheres.");
-    // Default initialize everything to nullptr so that we only need to set the
-    // appropriate block maps for the specific frames
-    std::vector<std::unique_ptr<
-        domain::CoordinateMapBase<Frame::Grid, Frame::Inertial, 3>>>
-        grid_to_inertial_block_maps{number_of_blocks_};
-    std::vector<std::unique_ptr<
-        domain::CoordinateMapBase<Frame::Grid, Frame::Distorted, 3>>>
-        grid_to_distorted_block_maps{number_of_blocks_};
-    std::vector<std::unique_ptr<
-        domain::CoordinateMapBase<Frame::Distorted, Frame::Inertial, 3>>>
-        distorted_to_inertial_block_maps{number_of_blocks_};
-
-    // The 0th block always exists and will only need an expansion + rotation
-    // map from the grid to inertial frame. No maps to the distorted frame
-    grid_to_inertial_block_maps[0] =
-        time_dependent_options_
-            ->grid_to_inertial_map<domain::ObjectLabel::None>(false);
-
-    // Because we require that both objects have inner shells, object A
-    // corresponds to blocks 46-59 and object B corresponds to blocks 60-73. If
-    // we have extra outer shells, those will have the same maps as
-    // block 0, and will start at block 74. The `true` being passed to
-    // the functions specifies that the size map *should* be included in the
-    // distorted frame.
-    grid_to_inertial_block_maps[46] =
-        time_dependent_options_->grid_to_inertial_map<domain::ObjectLabel::A>(
-            true);
-    grid_to_distorted_block_maps[46] =
-        time_dependent_options_->grid_to_distorted_map<domain::ObjectLabel::A>(
-            true);
-    distorted_to_inertial_block_maps[46] =
-        time_dependent_options_->distorted_to_inertial_map(true);
-
-    grid_to_inertial_block_maps[60] =
-        time_dependent_options_->grid_to_inertial_map<domain::ObjectLabel::B>(
-            true);
-    grid_to_distorted_block_maps[60] =
-        time_dependent_options_->grid_to_distorted_map<domain::ObjectLabel::B>(
-            true);
-    distorted_to_inertial_block_maps[60] =
-        time_dependent_options_->distorted_to_inertial_map(true);
-
-    for (size_t block = 1; block < number_of_blocks_; ++block) {
-      if (block == 46 or block == 60) {
-        continue;  // Already initialized
-      } else if (block > 46 and block < 60) {
-        grid_to_inertial_block_maps[block] =
-            grid_to_inertial_block_maps[46]->get_clone();
-        if (grid_to_distorted_block_maps[46] != nullptr) {
-          grid_to_distorted_block_maps[block] =
-              grid_to_distorted_block_maps[46]->get_clone();
-          distorted_to_inertial_block_maps[block] =
-              distorted_to_inertial_block_maps[46]->get_clone();
-        }
-      } else if (block > 60 and block < 74) {
-        grid_to_inertial_block_maps[block] =
-            grid_to_inertial_block_maps[60]->get_clone();
-        if (grid_to_distorted_block_maps[60] != nullptr) {
-          grid_to_distorted_block_maps[block] =
-              grid_to_distorted_block_maps[60]->get_clone();
-          distorted_to_inertial_block_maps[block] =
-              distorted_to_inertial_block_maps[60]->get_clone();
-        }
-      } else {
-        grid_to_inertial_block_maps[block] =
-            grid_to_inertial_block_maps[0]->get_clone();
-      }
-    }
-
-    for (size_t block = 0; block < number_of_blocks_; ++block) {
-      domain.inject_time_dependent_map_for_block(
-          block, std::move(grid_to_inertial_block_maps[block]),
-          std::move(grid_to_distorted_block_maps[block]),
-          std::move(distorted_to_inertial_block_maps[block]));
-    }
-  }
-
-  return domain;
+    Domain<3> domain{std::move(coordinate_maps), std::move(excision_spheres),
+                     block_names_, block_groups_};
+    return domain;
 }
 
 std::vector<DirectionMap<
@@ -950,14 +798,14 @@ CylindricalShell::external_boundary_conditions() const {
       boundary_conditions[i + 27][Direction<3>::lower_zeta()] =
           inner_boundary_condition_->get_clone();
     }
-    if (not include_inner_sphere_B_) {
-      // EB Filled Cylinder
-      boundary_conditions[i + 18][Direction<3>::lower_zeta()] =
-          inner_boundary_condition_->get_clone();
-      // MB Filled Cylinder
-      boundary_conditions[i + 32][Direction<3>::lower_zeta()] =
-          inner_boundary_condition_->get_clone();
-    }
+    // if (not include_inner_sphere_B_) {
+    //  EB Filled Cylinder
+    boundary_conditions[i + 18][Direction<3>::lower_zeta()] =
+        inner_boundary_condition_->get_clone();
+    // MB Filled Cylinder
+    boundary_conditions[i + 32][Direction<3>::lower_zeta()] =
+        inner_boundary_condition_->get_clone();
+    //}
   }
   for (size_t i = 0; i < 4; ++i) {
     // if (not include_outer_sphere_) {
@@ -973,11 +821,11 @@ CylindricalShell::external_boundary_conditions() const {
       boundary_conditions[i + 14][Direction<3>::lower_xi()] =
           inner_boundary_condition_->get_clone();
     }
-    if (not include_inner_sphere_B_) {
-      // EB Cylinder
-      boundary_conditions[i + 23][Direction<3>::lower_xi()] =
-          inner_boundary_condition_->get_clone();
-    }
+    // if (not include_inner_sphere_B_) {
+    //  EB Cylinder
+    boundary_conditions[i + 23][Direction<3>::lower_xi()] =
+        inner_boundary_condition_->get_clone();
+    //}
   }
 
   size_t last_block = 46;
@@ -997,7 +845,7 @@ CylindricalShell::external_boundary_conditions() const {
     }
     last_block += 14;
   }
-  if (include_inner_sphere_B_) {
+  /*if (include_inner_sphere_B_) {
     for (size_t i = 0; i < 5; ++i) {
       // InnerSphereEB Filled Cylinder
       boundary_conditions[last_block + i][Direction<3>::lower_zeta()] =
@@ -1012,7 +860,7 @@ CylindricalShell::external_boundary_conditions() const {
           inner_boundary_condition_->get_clone();
     }
     last_block += 14;
-  }
+  }*/
   return boundary_conditions;
 }
 
