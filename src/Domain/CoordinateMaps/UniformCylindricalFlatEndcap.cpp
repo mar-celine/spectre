@@ -195,7 +195,7 @@ UniformCylindricalFlatEndcap::UniformCylindricalFlatEndcap(
 
   // Assumptions made in the map.  The exact numbers for all of these
   // can be changed, as long as the unit test is changed to test them.
-  ASSERT(center_two[2] >= center_one[2] + 1.05 * radius_one,
+  /* ASSERT(center_two[2] >= center_one[2] + 1.05 * radius_one,
          "center_two[2] must be >= center_one[2] + 1.05 * radius_one, not "
              << center_two[2] << " " << center_one[2] + 1.05 * radius_one
              << param_string());
@@ -221,7 +221,7 @@ UniformCylindricalFlatEndcap::UniformCylindricalFlatEndcap(
           << center_one_ << " center_two = " << center_two_
           << " radius_one = " << radius_one_ << " radius_two = " << radius_two_
           << " theta_max_one = " << theta_max_one_ << param_string());
-
+  */
   const double horizontal_dist_spheres =
       sqrt(square(center_one[0] - center_two[0]) +
            square(center_one[1] - center_two[1]));

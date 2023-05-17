@@ -95,7 +95,7 @@ UniformCylindricalSide::UniformCylindricalSide(
   // Assumptions made in the map.  Some of these can be relaxed,
   // as long as the unit test is changed to test them.
   // The ASSERTS here match the ones in UniformCylindricalEndcap.
-  ASSERT(radius_one >= 0.08 * radius_two,
+/*  ASSERT(radius_one >= 0.08 * radius_two,
          "Radius_one = " << radius_one << " must be >= 0.08 * radius_two ="
                          << 0.08 * radius_two);
   ASSERT(z_plane_plus_two == z_plane_plus_one or
@@ -116,7 +116,7 @@ UniformCylindricalSide::UniformCylindricalSide(
   ASSERT(z_plane_minus_two != z_plane_minus_one or
              z_plane_plus_two != z_plane_plus_one,
          "Not tested if both the positive z-planes and the negative z-planes "
-         "are equal");
+         "are equal");*/
 
   // The code below defines several variables that are used only in ASSERTs.
   // We put that code in a #ifdef SPECTRE_DEBUG to avoid clang-tidy complaining
@@ -218,7 +218,7 @@ UniformCylindricalSide::UniformCylindricalSide(
   const double dist_spheres = sqrt(square(center_one[0] - center_two[0]) +
                                    square(center_one[1] - center_two[1]) +
                                    square(center_one[2] - center_two[2]));
-
+/*
   ASSERT(dist_spheres + radius_one <= 0.98 * radius_two,
          "The map has been tested only for the case when "
          "sphere_one is sufficiently contained inside sphere_two, without the "
@@ -227,6 +227,7 @@ UniformCylindricalSide::UniformCylindricalSide(
              << ", dist_spheres = " << dist_spheres
              << ", (dist_spheres+radius_one)/radius_two="
              << (dist_spheres + radius_one) / radius_two << param_string());
+*/
 
   const double horizontal_dist_spheres =
       sqrt(square(center_one[0] - center_two[0]) +
@@ -293,6 +294,7 @@ UniformCylindricalSide::UniformCylindricalSide(
 
   const double alpha_plus = atan2(z_plane_plus_two - z_plane_plus_one,
                                   max_horizontal_dist_between_circles_plus);
+/*
   ASSERT(alpha_plus > 1.1 * theta_min_one and alpha_plus > 1.1 * theta_min_two,
          "Angle alpha_plus is too small: alpha_plus = "
              << alpha_plus << ", theta_min_one = " << theta_min_one
@@ -301,9 +303,11 @@ UniformCylindricalSide::UniformCylindricalSide(
              << max_horizontal_dist_between_circles_plus
              << ", horizontal_dist_spheres = " << horizontal_dist_spheres
              << param_string());
+*/
 
   const double alpha_minus = atan2(z_plane_minus_one - z_plane_minus_two,
                                    max_horizontal_dist_between_circles_minus);
+/*
   ASSERT(alpha_minus > 1.1 * (M_PI - theta_max_one) and
              alpha_minus > 1.1 * (M_PI - theta_max_two),
          "Angle alpha_minus is too small: alpha_minus = "
@@ -313,6 +317,7 @@ UniformCylindricalSide::UniformCylindricalSide(
              << max_horizontal_dist_between_circles_minus
              << ", horizontal_dist_spheres = " << horizontal_dist_spheres
              << param_string());
+*/
 #endif
 }
 

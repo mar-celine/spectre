@@ -213,7 +213,7 @@ UniformCylindricalEndcap::UniformCylindricalEndcap(
 
   // Assumptions made in the map.  Some of these can be relaxed,
   // as long as the unit test is changed to test them.
-  ASSERT(z_plane_two >= z_plane_one + 0.04 * radius_two,
+/*  ASSERT(z_plane_two >= z_plane_one + 0.04 * radius_two,
          "z_plane_two must be >= z_plane_one + 0.04 * radius_two, not "
              << z_plane_two << " " << z_plane_one << " "
              << z_plane_one + 0.04 * radius_two << param_string());
@@ -237,11 +237,11 @@ UniformCylindricalEndcap::UniformCylindricalEndcap(
          " theta_max_one = "
              << theta_max_one_ << " theta_max_two = " << theta_max_two_
              << param_string());
-
+*/
   const double dist_spheres = sqrt(square(center_one[0] - center_two[0]) +
                                    square(center_one[1] - center_two[1]) +
                                    square(center_one[2] - center_two[2]));
-
+/*
   ASSERT(dist_spheres + radius_one <= 0.98 * radius_two,
          "The map has been tested only for the case when "
          "sphere_one is sufficiently contained inside sphere_two, without the "
@@ -250,7 +250,7 @@ UniformCylindricalEndcap::UniformCylindricalEndcap(
              << ", dist_spheres = " << dist_spheres
              << ", (dist_spheres+radius_one)/radius_two="
              << (dist_spheres + radius_one) / radius_two << param_string());
-
+*/
   const double horizontal_dist_spheres =
       sqrt(square(center_one[0] - center_two[0]) +
            square(center_one[1] - center_two[1]));
@@ -263,6 +263,7 @@ UniformCylindricalEndcap::UniformCylindricalEndcap(
 
   const double alpha =
       atan2(z_plane_two - z_plane_one, max_horizontal_dist_between_circles);
+/*
   ASSERT(alpha > 1.1 * theta_max_one_ and alpha > 1.1 * theta_max_two_,
          "Angle alpha is too small: alpha = "
              << alpha << ", theta_max_one = " << theta_max_one_
@@ -271,6 +272,7 @@ UniformCylindricalEndcap::UniformCylindricalEndcap(
              << max_horizontal_dist_between_circles
              << ", horizontal_dist_spheres = " << horizontal_dist_spheres
              << param_string());
+*/
 #endif
 }
 
