@@ -31,6 +31,8 @@
 #include "Domain/Structure/OrientationMap.hpp"
 #include "NumericalAlgorithms/RootFinding/QuadraticEquation.hpp"
 
+#include <iostream>
+
 namespace {
 std::array<double, 3> rotate_to_z_axis(const std::array<double, 3> input) {
   return discrete_rotation(
@@ -76,6 +78,7 @@ CylindricalShell::CylindricalShell(
       use_equiangular_map_(use_equiangular_map),
       inner_boundary_condition_(std::move(inner_boundary_condition)),
       outer_boundary_condition_(std::move(outer_boundary_condition)) {
+  std::cout << "Inside CylindricalShell constructor." << std::endl;
   if (center_A_[2] <= 0.0) {
     PARSE_ERROR(
         context,
@@ -187,9 +190,9 @@ CylindricalShell::CylindricalShell(
   if (include_inner_sphere_B) {
     number_of_blocks_ += 14;
   }
-  if (include_outer_sphere) {
-    number_of_blocks_ += 18;
-  }
+  /*  if (include_outer_sphere) {
+      number_of_blocks_ += 18;
+    }*/
 
   // Add SphereE blocks if necessary.  Note that
   // https://arxiv.org/abs/1206.3015 has a mistake just above
@@ -287,16 +290,16 @@ CylindricalShell::CylindricalShell(
     // 4 blocks
     add_cylinder_name("InnerSphereEB", "InnerSphereB");
   }
-  if (include_outer_sphere) {
-    // 5 blocks
-    add_filled_cylinder_name("OuterSphereCA", "OuterSphere");
-    // 5 blocks
-    add_filled_cylinder_name("OuterSphereCB", "OuterSphere");
-    // 4 blocks
-    add_cylinder_name("OuterSphereCA", "OuterSphere");
-    // 4 blocks
-    add_cylinder_name("OuterSphereCB", "OuterSphere");
-  }
+  /*  if (include_outer_sphere) {
+      // 5 blocks
+      add_filled_cylinder_name("OuterSphereCA", "OuterSphere");
+      // 5 blocks
+      add_filled_cylinder_name("OuterSphereCB", "OuterSphere");
+      // 4 blocks
+      add_cylinder_name("OuterSphereCA", "OuterSphere");
+      // 4 blocks
+      add_cylinder_name("OuterSphereCB", "OuterSphere");
+    }*/
 
   // Expand initial refinement over all blocks
   const ExpandOverBlocks<size_t, 3> expand_over_blocks{block_names_,
@@ -374,11 +377,11 @@ CylindricalShell::CylindricalShell(
     }
     current_block += 4;
   }
-  if (include_outer_sphere) {
-    for (size_t block = 0; block < 10; ++block) {
-      swap_refinement_and_grid_points_xi_zeta(current_block++);
-    }
-  }
+  /*  if (include_outer_sphere) {
+      for (size_t block = 0; block < 10; ++block) {
+        swap_refinement_and_grid_points_xi_zeta(current_block++);
+      }
+    }*/
 }
 
 CylindricalShell::CylindricalShell(
@@ -581,9 +584,7 @@ Domain<3> CylindricalShell::create_domain() const {
 
   // Inner radius of the outer C shell, if it exists.
   // If it doesn't exist, then it is the same as the outer_radius_.
-  const double inner_radius_C = include_outer_sphere_
-                                    ? 3.0 * (center_A_[2] - center_B_[2])
-                                    : outer_radius_;
+  const double inner_radius_C = outer_radius_;
 
   // z_cut_CA_lower is the lower z_plane position for the CA endcap,
   // defined by https://arxiv.org/abs/1206.3015 in the bulleted list
@@ -784,41 +785,41 @@ Domain<3> CylindricalShell::create_domain() const {
             -z_cut_EB_upper, -z_cut_EB_lower),
         CoordinateMaps::DiscreteRotation<3>(rotate_to_minus_x_axis));
   }
-  if (include_outer_sphere_) {
-    const double z_cut_CA_outer = 0.7 * outer_radius_;
-    const double z_cut_CB_outer = -0.7 * outer_radius_;
-    // OuterCA Filled Cylinder
-    // 5 blocks
-    add_endcap_to_list_of_maps(
-        CoordinateMaps::UniformCylindricalEndcap(
-            make_array<3>(0.0), make_array<3>(0.0), inner_radius_C,
-            outer_radius_, z_cut_CA_upper, z_cut_CA_outer),
-        CoordinateMaps::DiscreteRotation<3>(rotate_to_x_axis));
-    // OuterCB Filled Cylinder
-    // 5 blocks
-    add_endcap_to_list_of_maps(
-        CoordinateMaps::UniformCylindricalEndcap(
-            make_array<3>(0.0), make_array<3>(0.0), inner_radius_C,
-            outer_radius_, -z_cut_CB_upper, -z_cut_CB_outer),
-        CoordinateMaps::DiscreteRotation<3>(rotate_to_minus_x_axis));
-    // OuterCA Cylinder
-    // 4 blocks
-    add_side_to_list_of_maps(
-        CoordinateMaps::UniformCylindricalSide(
-            make_array<3>(0.0), make_array<3>(0.0), inner_radius_C,
-            outer_radius_, z_cut_CA_upper, z_cutting_plane_, z_cut_CA_outer,
-            z_cutting_plane_),
-        CoordinateMaps::DiscreteRotation<3>(rotate_to_x_axis));
-    // OuterCB Cylinder
-    // 4 blocks
-    add_side_to_list_of_maps(
-        CoordinateMaps::UniformCylindricalSide(
-            make_array<3>(0.0), make_array<3>(0.0), inner_radius_C,
-            outer_radius_, -z_cut_CB_upper, -z_cutting_plane_, -z_cut_CB_outer,
-            -z_cutting_plane_),
-        CoordinateMaps::DiscreteRotation<3>(rotate_to_minus_x_axis));
-  }
-
+  /*  if (include_outer_sphere_) {
+      const double z_cut_CA_outer = 0.7 * outer_radius_;
+      const double z_cut_CB_outer = -0.7 * outer_radius_;
+      // OuterCA Filled Cylinder
+      // 5 blocks
+      add_endcap_to_list_of_maps(
+          CoordinateMaps::UniformCylindricalEndcap(
+              make_array<3>(0.0), make_array<3>(0.0), inner_radius_C,
+              outer_radius_, z_cut_CA_upper, z_cut_CA_outer),
+          CoordinateMaps::DiscreteRotation<3>(rotate_to_x_axis));
+      // OuterCB Filled Cylinder
+      // 5 blocks
+      add_endcap_to_list_of_maps(
+          CoordinateMaps::UniformCylindricalEndcap(
+              make_array<3>(0.0), make_array<3>(0.0), inner_radius_C,
+              outer_radius_, -z_cut_CB_upper, -z_cut_CB_outer),
+          CoordinateMaps::DiscreteRotation<3>(rotate_to_minus_x_axis));
+      // OuterCA Cylinder
+      // 4 blocks
+      add_side_to_list_of_maps(
+          CoordinateMaps::UniformCylindricalSide(
+              make_array<3>(0.0), make_array<3>(0.0), inner_radius_C,
+              outer_radius_, z_cut_CA_upper, z_cutting_plane_, z_cut_CA_outer,
+              z_cutting_plane_),
+          CoordinateMaps::DiscreteRotation<3>(rotate_to_x_axis));
+      // OuterCB Cylinder
+      // 4 blocks
+      add_side_to_list_of_maps(
+          CoordinateMaps::UniformCylindricalSide(
+              make_array<3>(0.0), make_array<3>(0.0), inner_radius_C,
+              outer_radius_, -z_cut_CB_upper, -z_cutting_plane_,
+    -z_cut_CB_outer, -z_cutting_plane_),
+          CoordinateMaps::DiscreteRotation<3>(rotate_to_minus_x_axis));
+    }
+  */
   // Excision spheres
   std::unordered_map<std::string, ExcisionSphere<3>> excision_spheres{};
 
@@ -983,14 +984,14 @@ CylindricalShell::external_boundary_conditions() const {
       3, std::unique_ptr<domain::BoundaryConditions::BoundaryCondition>>>
       boundary_conditions{number_of_blocks_};
   for (size_t i = 0; i < 5; ++i) {
-    if (not include_outer_sphere_) {
-      // CA Filled Cylinder
-      boundary_conditions[i][Direction<3>::upper_zeta()] =
-          outer_boundary_condition_->get_clone();
-      // CB Filled Cylinder
-      boundary_conditions[i + 37][Direction<3>::upper_zeta()] =
-          outer_boundary_condition_->get_clone();
-    }
+    // if (not include_outer_sphere_) {
+    //  CA Filled Cylinder
+    boundary_conditions[i][Direction<3>::upper_zeta()] =
+        outer_boundary_condition_->get_clone();
+    // CB Filled Cylinder
+    boundary_conditions[i + 37][Direction<3>::upper_zeta()] =
+        outer_boundary_condition_->get_clone();
+    //}
     if (not include_inner_sphere_A_) {
       // EA Filled Cylinder
       boundary_conditions[i + 9][Direction<3>::lower_zeta()] =
@@ -1009,14 +1010,14 @@ CylindricalShell::external_boundary_conditions() const {
     }
   }
   for (size_t i = 0; i < 4; ++i) {
-    if (not include_outer_sphere_) {
-      // CA Cylinder
-      boundary_conditions[i + 5][Direction<3>::upper_xi()] =
-          outer_boundary_condition_->get_clone();
-      // CB Cylinder
-      boundary_conditions[i + 42][Direction<3>::upper_xi()] =
-          outer_boundary_condition_->get_clone();
-    }
+    // if (not include_outer_sphere_) {
+    //  CA Cylinder
+    boundary_conditions[i + 5][Direction<3>::upper_xi()] =
+        outer_boundary_condition_->get_clone();
+    // CB Cylinder
+    boundary_conditions[i + 42][Direction<3>::upper_xi()] =
+        outer_boundary_condition_->get_clone();
+    //}
     if (not include_inner_sphere_A_) {
       // EA Cylinder
       boundary_conditions[i + 14][Direction<3>::lower_xi()] =
@@ -1062,7 +1063,7 @@ CylindricalShell::external_boundary_conditions() const {
     }
     last_block += 14;
   }
-  if (include_outer_sphere_) {
+  /*if (include_outer_sphere_) {
     for (size_t i = 0; i < 5; ++i) {
       // OuterCA Filled Cylinder
       boundary_conditions[last_block + i][Direction<3>::upper_zeta()] =
@@ -1079,7 +1080,7 @@ CylindricalShell::external_boundary_conditions() const {
       boundary_conditions[last_block + i + 14][Direction<3>::upper_xi()] =
           outer_boundary_condition_->get_clone();
     }
-  }
+  }*/
   return boundary_conditions;
 }
 
