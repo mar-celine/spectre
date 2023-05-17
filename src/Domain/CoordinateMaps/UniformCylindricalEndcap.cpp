@@ -213,44 +213,43 @@ UniformCylindricalEndcap::UniformCylindricalEndcap(
 
   // Assumptions made in the map.  Some of these can be relaxed,
   // as long as the unit test is changed to test them.
-/*  ASSERT(z_plane_two >= z_plane_one + 0.04 * radius_two,
-         "z_plane_two must be >= z_plane_one + 0.04 * radius_two, not "
-             << z_plane_two << " " << z_plane_one << " "
-             << z_plane_one + 0.04 * radius_two << param_string());
-  ASSERT(theta_max_one_ < M_PI * 0.45,
-         "z_plane_one is too close to the center of sphere_one: theta/pi = "
-             << theta_max_one_ / M_PI << param_string());
-  ASSERT(theta_max_one_ > M_PI * 0.075,
-         "z_plane_one is too far from the center of sphere_one: theta/pi = "
-             << theta_max_one_ / M_PI << param_string());
-  ASSERT(theta_max_two_ < M_PI * 0.45,
-         "z_plane_two is too close to the center of sphere_two: theta/pi = "
-             << theta_max_two_ / M_PI << param_string());
-  ASSERT(theta_max_two_ > M_PI * 0.075,
-         "z_plane_two is too far from the center of sphere_two: theta/pi = "
-             << theta_max_two_ / M_PI << param_string());
+  /*  ASSERT(z_plane_two >= z_plane_one + 0.04 * radius_two,
+           "z_plane_two must be >= z_plane_one + 0.04 * radius_two, not "
+               << z_plane_two << " " << z_plane_one << " "
+               << z_plane_one + 0.04 * radius_two << param_string());
+    ASSERT(theta_max_one_ < M_PI * 0.45,
+           "z_plane_one is too close to the center of sphere_one: theta/pi = "
+               << theta_max_one_ / M_PI << param_string());
+    ASSERT(theta_max_one_ > M_PI * 0.075,
+           "z_plane_one is too far from the center of sphere_one: theta/pi = "
+               << theta_max_one_ / M_PI << param_string());
+    ASSERT(theta_max_two_ < M_PI * 0.45,
+           "z_plane_two is too close to the center of sphere_two: theta/pi = "
+               << theta_max_two_ / M_PI << param_string());
+    ASSERT(theta_max_two_ > M_PI * 0.075,
+           "z_plane_two is too far from the center of sphere_two: theta/pi = "
+               << theta_max_two_ / M_PI << param_string());
 
-  ASSERT(is_uniform_cylindrical_endcap_invertible_on_sphere_one(
-             center_one_, center_two_, radius_one_, radius_two_, theta_max_one_,
-             theta_max_two_),
-         "The map is not invertible at at least one point on sphere_one."
-         " theta_max_one = "
-             << theta_max_one_ << " theta_max_two = " << theta_max_two_
-             << param_string());
-*/
+    ASSERT(is_uniform_cylindrical_endcap_invertible_on_sphere_one(
+               center_one_, center_two_, radius_one_, radius_two_,
+    theta_max_one_, theta_max_two_), "The map is not invertible at at least one
+    point on sphere_one." " theta_max_one = "
+               << theta_max_one_ << " theta_max_two = " << theta_max_two_
+               << param_string());
+  */
   const double dist_spheres = sqrt(square(center_one[0] - center_two[0]) +
                                    square(center_one[1] - center_two[1]) +
                                    square(center_one[2] - center_two[2]));
-/*
-  ASSERT(dist_spheres + radius_one <= 0.98 * radius_two,
-         "The map has been tested only for the case when "
-         "sphere_one is sufficiently contained inside sphere_two, without the "
-         "two spheres almost touching. Radius_one = "
-             << radius_one << ", radius_two = " << radius_two
-             << ", dist_spheres = " << dist_spheres
-             << ", (dist_spheres+radius_one)/radius_two="
-             << (dist_spheres + radius_one) / radius_two << param_string());
-*/
+  /*
+    ASSERT(dist_spheres + radius_one <= 0.98 * radius_two,
+           "The map has been tested only for the case when "
+           "sphere_one is sufficiently contained inside sphere_two, without the
+    " "two spheres almost touching. Radius_one = "
+               << radius_one << ", radius_two = " << radius_two
+               << ", dist_spheres = " << dist_spheres
+               << ", (dist_spheres+radius_one)/radius_two="
+               << (dist_spheres + radius_one) / radius_two << param_string());
+  */
   const double horizontal_dist_spheres =
       sqrt(square(center_one[0] - center_two[0]) +
            square(center_one[1] - center_two[1]));
