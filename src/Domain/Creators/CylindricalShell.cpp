@@ -145,13 +145,6 @@ CylindricalShell::CylindricalShell(
   if (include_inner_sphere_A) {
     number_of_blocks_ += 14;
   }
-  /*if (include_inner_sphere_B) {
-    number_of_blocks_ += 14;
-  }*/
-  /*  if (include_outer_sphere) {
-      number_of_blocks_ += 18;
-    }*/
-
   // Create block names and groups
   auto add_filled_cylinder_name = [this](const std::string& prefix,
                                          const std::string& group_name) {
@@ -221,15 +214,6 @@ CylindricalShell::CylindricalShell(
     // 4 blocks
     add_cylinder_name("InnerSphereEA", "InnerSphereA");
   }
-  /*if (include_inner_sphere_B) {
-    // 5 blocks
-    add_filled_cylinder_name("InnerSphereEB", "InnerSphereB");
-    // 5 blocks
-    add_filled_cylinder_name("InnerSphereMB", "InnerSphereB");
-    // 4 blocks
-    add_cylinder_name("InnerSphereEB", "InnerSphereB");
-  }*/
-
   // Expand initial refinement over all blocks
   const ExpandOverBlocks<size_t, 3> expand_over_blocks{block_names_,
                                                        block_groups_};
@@ -300,12 +284,6 @@ CylindricalShell::CylindricalShell(
     }
     current_block += 4;
   }
-  /*if (include_inner_sphere_B) {
-    for (size_t block = 0; block < 10; ++block) {
-      swap_refinement_and_grid_points_xi_zeta(current_block++);
-    }
-    current_block += 4;
-  }*/
 }
 
 CylindricalShell::CylindricalShell(
@@ -669,37 +647,6 @@ Domain<3> CylindricalShell::create_domain() const {
             z_cut_lower, z_cut_EA_upper, z_cut_EA_lower),
         CoordinateMaps::DiscreteRotation<3>(rotate_to_x_axis));
   }
-  /*if (include_inner_sphere_B_) {
-    // Note here that 'upper' means 'closer to z=-infinity'
-    // because we are on the -z side of the cutting plane.
-    const double z_cut_upper = center_B_[2] - 0.7 * radius_B_;
-    const double z_cut_lower = center_B_[2] + 0.7 * radius_B_;
-    // InnerSphereEB Filled Cylinder
-    // 5 blocks
-    add_endcap_to_list_of_maps(
-        CoordinateMaps::UniformCylindricalEndcap(
-            flip_about_xy_plane(center_B_), flip_about_xy_plane(center_B_),
-            radius_B_, outer_radius_B_, -z_cut_upper, -z_cut_EB_upper),
-        CoordinateMaps::DiscreteRotation<3>(rotate_to_minus_x_axis));
-    // InnerSphereMB Filled Cylinder
-    // 5 blocks
-    add_endcap_to_list_of_maps(
-        // For some reason codecov complains about the next function.
-        // LCOV_EXCL_START
-        CoordinateMaps::UniformCylindricalEndcap(center_B_, center_B_,
-                                                 radius_B_, outer_radius_B_,
-                                                 z_cut_lower, z_cut_EB_lower),
-        // LCOV_EXCL_STOP
-        CoordinateMaps::DiscreteRotation<3>(rotate_to_x_axis));
-    // InnerSphereEB Cylinder
-    // 4 blocks
-    add_side_to_list_of_maps(
-        CoordinateMaps::UniformCylindricalSide(
-            flip_about_xy_plane(center_B_), flip_about_xy_plane(center_B_),
-            radius_B_, outer_radius_B_, -z_cut_upper, -z_cut_lower,
-            -z_cut_EB_upper, -z_cut_EB_lower),
-        CoordinateMaps::DiscreteRotation<3>(rotate_to_minus_x_axis));
-  }*/
   // Excision spheres
   std::unordered_map<std::string, ExcisionSphere<3>> excision_spheres{};
 
@@ -738,20 +685,6 @@ Domain<3> CylindricalShell::create_domain() const {
           abutting_directions_A});
 
   std::unordered_map<size_t, Direction<3>> abutting_directions_B;
-  /*if (include_inner_sphere_B_) {
-    for (size_t i = 0; i < 10; ++i) {
-      // LCOV_EXCL_START
-      abutting_directions_B.emplace(first_inner_sphere_block + i,
-                                    Direction<3>::lower_zeta());
-      // LCOV_EXCL_STOP
-    }
-    for (size_t i = 0; i < 4; ++i) {
-      // LCOV_EXCL_START
-      abutting_directions_B.emplace(first_inner_sphere_block + 10 + i,
-                                    Direction<3>::lower_xi());
-      // LCOV_EXCL_STOP
-    }
-  }*/ //else {
   for (size_t i = 0; i < 5; ++i) {
     abutting_directions_B.emplace(18 + i, Direction<3>::lower_zeta());
     abutting_directions_B.emplace(32 + i, Direction<3>::lower_zeta());
@@ -759,7 +692,6 @@ Domain<3> CylindricalShell::create_domain() const {
     for (size_t i = 0; i < 4; ++i) {
       abutting_directions_B.emplace(23 + i, Direction<3>::lower_xi());
     }
-    //}
     excision_spheres.emplace(
         "ExcisionSphereB",
         ExcisionSphere<3>{
