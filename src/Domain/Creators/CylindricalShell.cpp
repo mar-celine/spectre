@@ -58,7 +58,7 @@ namespace domain::creators {
 CylindricalShell::CylindricalShell(
     std::array<double, 3> center_A, std::array<double, 3> center_B,
     double radius_A, double radius_B, bool include_inner_sphere_A,
-    bool include_inner_sphere_B, bool include_outer_sphere, double outer_radius,
+    bool include_inner_sphere_B, double outer_radius,
     bool use_equiangular_map,
     const typename InitialRefinement::type& initial_refinement,
     const typename InitialGridPoints::type& initial_grid_points,
@@ -73,7 +73,6 @@ CylindricalShell::CylindricalShell(
       radius_B_(radius_B),
       include_inner_sphere_A_(include_inner_sphere_A),
       include_inner_sphere_B_(include_inner_sphere_B),
-      include_outer_sphere_(include_outer_sphere),
       outer_radius_(outer_radius),
       use_equiangular_map_(use_equiangular_map),
       inner_boundary_condition_(std::move(inner_boundary_condition)),
@@ -270,7 +269,7 @@ CylindricalShell::CylindricalShell(
     bco::TimeDependentMapOptions time_dependent_options,
     std::array<double, 3> center_A, std::array<double, 3> center_B,
     double radius_A, double radius_B, bool include_inner_sphere_A,
-    bool include_inner_sphere_B, bool include_outer_sphere, double outer_radius,
+    bool include_inner_sphere_B, double outer_radius,
     bool use_equiangular_map,
     const typename InitialRefinement::type& initial_refinement,
     const typename InitialGridPoints::type& initial_grid_points,
@@ -281,7 +280,7 @@ CylindricalShell::CylindricalShell(
     const Options::Context& context)
     : CylindricalShell(center_A, center_B, radius_A, radius_B,
                        include_inner_sphere_A, include_inner_sphere_B,
-                       include_outer_sphere, outer_radius, use_equiangular_map,
+                       outer_radius, use_equiangular_map,
                        initial_refinement, initial_grid_points,
                        std::move(inner_boundary_condition),
                        std::move(outer_boundary_condition), context) {

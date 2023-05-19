@@ -204,11 +204,6 @@ class CylindricalShell : public DomainCreator<3> {
     static constexpr Options::String help = {
         "Add an extra spherical layer of Blocks around Object B."};
   };
-  struct IncludeOuterSphere {
-    using type = bool;
-    static constexpr Options::String help = {
-        "Add an extra spherical layer of Blocks inside the outer boundary."};
-  };
   struct OuterRadius {
     using type = double;
     static constexpr Options::String help = {
@@ -274,7 +269,7 @@ class CylindricalShell : public DomainCreator<3> {
 
   using time_independent_options =
       tmpl::list<CenterA, CenterB, RadiusA, RadiusB, IncludeInnerSphereA,
-                 IncludeInnerSphereB, IncludeOuterSphere, OuterRadius,
+                 IncludeInnerSphereB, OuterRadius,
                  UseEquiangularMap, InitialRefinement, InitialGridPoints>;
 
   template <typename Metavariables>
@@ -306,7 +301,7 @@ class CylindricalShell : public DomainCreator<3> {
   CylindricalShell(
       std::array<double, 3> center_A, std::array<double, 3> center_B,
       double radius_A, double radius_B, bool include_inner_sphere_A,
-      bool include_inner_sphere_B, bool include_outer_sphere,
+      bool include_inner_sphere_B,
       double outer_radius, bool use_equiangular_map,
       const typename InitialRefinement::type& initial_refinement,
       const typename InitialGridPoints::type& initial_grid_points,
@@ -320,7 +315,7 @@ class CylindricalShell : public DomainCreator<3> {
       bco::TimeDependentMapOptions time_dependent_options,
       std::array<double, 3> center_A, std::array<double, 3> center_B,
       double radius_A, double radius_B, bool include_inner_sphere_A,
-      bool include_inner_sphere_B, bool include_outer_sphere,
+      bool include_inner_sphere_B,
       double outer_radius, bool use_equiangular_map,
       const typename InitialRefinement::type& initial_refinement,
       const typename InitialGridPoints::type& initial_grid_points,
@@ -374,7 +369,6 @@ class CylindricalShell : public DomainCreator<3> {
   double outer_radius_B_{};
   bool include_inner_sphere_A_{};
   bool include_inner_sphere_B_{};
-  bool include_outer_sphere_{};
   double outer_radius_{};
   bool use_equiangular_map_{false};
   typename std::vector<std::array<size_t, 3>> initial_refinement_{};
