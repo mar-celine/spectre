@@ -269,8 +269,8 @@ class CylindricalShell : public DomainCreator<3> {
 
   using time_independent_options =
       tmpl::list<CenterA, CenterB, RadiusA, RadiusB, IncludeInnerSphereA,
-                 IncludeInnerSphereB, OuterRadius,
-                 UseEquiangularMap, InitialRefinement, InitialGridPoints>;
+                 IncludeInnerSphereB, OuterRadius, UseEquiangularMap,
+                 InitialRefinement, InitialGridPoints>;
 
   template <typename Metavariables>
   using basic_options = tmpl::conditional_t<
@@ -301,8 +301,8 @@ class CylindricalShell : public DomainCreator<3> {
   CylindricalShell(
       std::array<double, 3> center_A, std::array<double, 3> center_B,
       double radius_A, double radius_B, bool include_inner_sphere_A,
-      bool include_inner_sphere_B,
-      double outer_radius, bool use_equiangular_map,
+      bool include_inner_sphere_B, double outer_radius,
+      bool use_equiangular_map,
       const typename InitialRefinement::type& initial_refinement,
       const typename InitialGridPoints::type& initial_grid_points,
       std::unique_ptr<domain::BoundaryConditions::BoundaryCondition>
@@ -315,8 +315,8 @@ class CylindricalShell : public DomainCreator<3> {
       bco::TimeDependentMapOptions time_dependent_options,
       std::array<double, 3> center_A, std::array<double, 3> center_B,
       double radius_A, double radius_B, bool include_inner_sphere_A,
-      bool include_inner_sphere_B,
-      double outer_radius, bool use_equiangular_map,
+      bool include_inner_sphere_B, double outer_radius,
+      bool use_equiangular_map,
       const typename InitialRefinement::type& initial_refinement,
       const typename InitialGridPoints::type& initial_grid_points,
       std::unique_ptr<domain::BoundaryConditions::BoundaryCondition>
@@ -368,20 +368,10 @@ class CylindricalShell : public DomainCreator<3> {
   double outer_radius_A_{};
   double outer_radius_B_{};
   bool include_inner_sphere_A_{};
-  bool include_inner_sphere_B_{};
   double outer_radius_{};
   bool use_equiangular_map_{false};
   typename std::vector<std::array<size_t, 3>> initial_refinement_{};
   typename std::vector<std::array<size_t, 3>> initial_grid_points_{};
-  // cut_spheres_offset_factor_ is eta in Eq. (A.9) of
-  // https://arxiv.org/abs/1206.3015.  cut_spheres_offset_factor_
-  // could be set to unity to simplify the equations.  Here we fix it
-  // to the value 0.99 used in SpEC, so that we reproduce SpEC's
-  // domain decomposition.
-  double cut_spheres_offset_factor_{0.99};
-  // z_cutting_plane_ is x_C in Eq. (A.9) of
-  // https://arxiv.org/abs/1206.3015 (but rotated to the z-axis).
-  double z_cutting_plane_{};
   size_t number_of_blocks_{};
   std::unique_ptr<domain::BoundaryConditions::BoundaryCondition>
       inner_boundary_condition_;

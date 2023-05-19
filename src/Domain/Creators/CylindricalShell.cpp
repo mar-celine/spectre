@@ -58,8 +58,7 @@ namespace domain::creators {
 CylindricalShell::CylindricalShell(
     std::array<double, 3> center_A, std::array<double, 3> center_B,
     double radius_A, double radius_B, bool include_inner_sphere_A,
-    bool include_inner_sphere_B, double outer_radius,
-    bool use_equiangular_map,
+    bool include_inner_sphere_B, double outer_radius, bool use_equiangular_map,
     const typename InitialRefinement::type& initial_refinement,
     const typename InitialGridPoints::type& initial_grid_points,
     std::unique_ptr<domain::BoundaryConditions::BoundaryCondition>
@@ -72,7 +71,6 @@ CylindricalShell::CylindricalShell(
       radius_A_(radius_A),
       radius_B_(radius_B),
       include_inner_sphere_A_(include_inner_sphere_A),
-      include_inner_sphere_B_(include_inner_sphere_B),
       outer_radius_(outer_radius),
       use_equiangular_map_(use_equiangular_map),
       inner_boundary_condition_(std::move(inner_boundary_condition)),
@@ -83,31 +81,8 @@ CylindricalShell::CylindricalShell(
         context,
         "The x-coordinate of the input CenterA is expected to be positive");
   }
-  if (center_B_[2] >= 0.0) {
-    PARSE_ERROR(
-        context,
-        "The x-coordinate of the input CenterB is expected to be negative");
-  }
-  if (radius_A_ <= 0.0 or radius_B_ <= 0.0) {
-    PARSE_ERROR(context, "RadiusA and RadiusB are expected to be positive");
-  }
-  if (radius_A_ < radius_B_) {
-    PARSE_ERROR(context, "RadiusA should not be smaller than RadiusB");
-  }
-  if (std::abs(center_A_[2]) > std::abs(center_B_[2])) {
-    PARSE_ERROR(context,
-                "We expect |x_A| <= |x_B|, for x the x-coordinate of either "
-                "CenterA or CenterB.  We should roughly have "
-                "RadiusA x_A + RadiusB x_B = 0 (i.e. for BBHs the "
-                "center of mass should be about at the origin).");
-  }
-  // The value 3.0 * (center_A_[2] - center_B_[2]) is what is
-  // chosen in SpEC as the inner radius of the innermost outer sphere.
-  if (outer_radius_ < 3.0 * (center_A_[2] - center_B_[2])) {
-    PARSE_ERROR(context,
-                "OuterRadius is too small. Please increase it "
-                "beyond "
-                    << 3.0 * (center_A_[2] - center_B_[2]));
+  if (radius_A_ <= 0.0) {
+    PARSE_ERROR(context, "RadiusA is expected to be positive");
   }
 
   if ((outer_boundary_condition_ == nullptr) xor
@@ -133,13 +108,6 @@ CylindricalShell::CylindricalShell(
                         ? radius_A_ + 0.5 * (std::abs(center_A_[2]) - radius_A_)
                         : radius_A_;
 
-  // outer_radius_B is the outer radius of the inner sphere B, if it exists.
-  // If the inner sphere B does not exist, then outer_radius_B is the same
-  // as radius_B_.
-  // If the inner sphere does exist, the algorithm for computing
-  // outer_radius_B is the same as in SpEC when there is one inner shell.
-  outer_radius_B_ = radius_B_;
-
   number_of_blocks_ = 46;
   if (include_inner_sphere_A) {
     number_of_blocks_ += 14;
@@ -164,14 +132,6 @@ CylindricalShell::CylindricalShell(
       block_groups_[group_name].insert(name);
     }
   };
-
-  // CA Filled Cylinder
-  // 5 blocks: 0 thru 4
-  // add_filled_cylinder_name("CA", "Outer");
-
-  // CA Cylinder
-  // 4 blocks: 5 thru 8
-  // add_cylinder_name("CA", "Outer");
 
   // EA Filled Cylinder
   // 5 blocks: 9 thru 13
@@ -232,28 +192,6 @@ CylindricalShell::CylindricalShell(
     swap_refinement_and_grid_points_xi_zeta(block);
   }
 
-  // EA Filled Cylinder
-  // 5 blocks: 9 thru 13
-  // for (size_t block = 9; block < 14; ++block) {
-  //  swap_refinement_and_grid_points_xi_zeta(block);
-  //}
-
-  // EB Filled Cylinder
-  // 5 blocks: 18 thru 22
-  // for (size_t block = 18; block < 23; ++block) {
-  //  swap_refinement_and_grid_points_xi_zeta(block);
-  //}
-
-  // MA Filled Cylinder
-  // 5 blocks: 27 thru 31
-  // MB Filled Cylinder
-  // 5 blocks: 32 thru 36
-  // CB Filled Cylinder
-  // 5 blocks: 37 thru 41
-  // for (size_t block = 27; block < 31; ++block) {
-  //  swap_refinement_and_grid_points_xi_zeta(block);
-  //}
-
   // Now do the filled cylinders for the inner and outer shells,
   // if they are present.
   size_t current_block = 5;
@@ -269,8 +207,7 @@ CylindricalShell::CylindricalShell(
     bco::TimeDependentMapOptions time_dependent_options,
     std::array<double, 3> center_A, std::array<double, 3> center_B,
     double radius_A, double radius_B, bool include_inner_sphere_A,
-    bool include_inner_sphere_B, double outer_radius,
-    bool use_equiangular_map,
+    bool include_inner_sphere_B, double outer_radius, bool use_equiangular_map,
     const typename InitialRefinement::type& initial_refinement,
     const typename InitialGridPoints::type& initial_grid_points,
     std::unique_ptr<domain::BoundaryConditions::BoundaryCondition>
@@ -280,16 +217,15 @@ CylindricalShell::CylindricalShell(
     const Options::Context& context)
     : CylindricalShell(center_A, center_B, radius_A, radius_B,
                        include_inner_sphere_A, include_inner_sphere_B,
-                       outer_radius, use_equiangular_map,
-                       initial_refinement, initial_grid_points,
-                       std::move(inner_boundary_condition),
+                       outer_radius, use_equiangular_map, initial_refinement,
+                       initial_grid_points, std::move(inner_boundary_condition),
                        std::move(outer_boundary_condition), context) {
   // The size map, which is applied from the grid to distorted frame, currently
   // needs to start and stop at certain radii around each excision. If the inner
   // spheres aren't included, the outer radii would have to be in the middle of
   // a block. With the inner spheres, the outer radii can be at block
   // boundaries.
-  if (not(include_inner_sphere_A and include_inner_sphere_B)) {
+  if (not(include_inner_sphere_A)) {
     PARSE_ERROR(context,
                 "To use the CylindricalBBH domain with time-dependent maps, "
                 "you must include the inner spheres for both objects. "
@@ -321,8 +257,6 @@ Domain<3> CylindricalShell::create_domain() const {
       Direction<3>::lower_zeta(), Direction<3>::upper_eta(),
       Direction<3>::upper_xi()}};
 
-  const std::array<double, 3> center_cutting_plane = {0.0, 0.0, 0.0};
-
   // The labels EA, EB, EE, etc are from Figure 20 of
   // https://arxiv.org/abs/1206.3015
   //
@@ -336,10 +270,8 @@ Domain<3> CylindricalShell::create_domain() const {
   // the EE spheres exist), and is the radius of the circle where the EB
   // sphere intersects the cutting plane.
   const std::array<double, 3> center_EA = {0.0, 0.0, center_A_[2]};
-  const std::array<double, 3> center_EB = {0.0, 0.0, center_B_[2]};
   const double radius_MB = std::abs(center_B_[2]);
   const double radius_EA = sqrt(square(center_EA[2]) + square(radius_MB));
-  const double radius_EB = sqrt(2.0) * std::abs(center_EB[2]);
 
   // Construct vector<CoordMap>s that go from logical coordinates to
   // various blocks making up a unit right cylinder.  These blocks are
@@ -369,36 +301,6 @@ Domain<3> CylindricalShell::create_domain() const {
       [&coordinate_maps, &logical_to_cylinder_center_maps,
        &logical_to_cylinder_surrounding_maps](
           const CoordinateMaps::UniformCylindricalEndcap& endcap_map,
-          const CoordinateMaps::DiscreteRotation<3>& rotation_map) {
-        auto new_logical_to_cylinder_center_maps =
-            domain::make_vector_coordinate_map_base<Frame::BlockLogical,
-                                                    Frame::Inertial, 3>(
-                logical_to_cylinder_center_maps, endcap_map, rotation_map);
-        coordinate_maps.insert(
-            coordinate_maps.end(),
-            std::make_move_iterator(
-                new_logical_to_cylinder_center_maps.begin()),
-            std::make_move_iterator(new_logical_to_cylinder_center_maps.end()));
-        auto new_logical_to_cylinder_surrounding_maps =
-            domain::make_vector_coordinate_map_base<Frame::BlockLogical,
-                                                    Frame::Inertial, 3>(
-                logical_to_cylinder_surrounding_maps, endcap_map, rotation_map);
-        coordinate_maps.insert(
-            coordinate_maps.end(),
-            std::make_move_iterator(
-                new_logical_to_cylinder_surrounding_maps.begin()),
-            std::make_move_iterator(
-                new_logical_to_cylinder_surrounding_maps.end()));
-      };
-
-  // Lambda that takes a UniformCylindricalFlatEndcap map and a
-  // DiscreteRotation map, composes it with the logical-to-cylinder
-  // maps, and adds it to the list of coordinate maps. Also adds
-  // boundary conditions if requested.
-  auto add_flat_endcap_to_list_of_maps =
-      [&coordinate_maps, &logical_to_cylinder_center_maps,
-       &logical_to_cylinder_surrounding_maps](
-          const CoordinateMaps::UniformCylindricalFlatEndcap& endcap_map,
           const CoordinateMaps::DiscreteRotation<3>& rotation_map) {
         auto new_logical_to_cylinder_center_maps =
             domain::make_vector_coordinate_map_base<Frame::BlockLogical,
@@ -457,21 +359,11 @@ Domain<3> CylindricalShell::create_domain() const {
                 new_logical_to_cylindrical_shell_maps.end()));
       };
 
-  // Inner radius of the outer C shell, if it exists.
-  // If it doesn't exist, then it is the same as the outer_radius_.
-  const double inner_radius_C = outer_radius_;
-
   // z_cut_CA_lower is the lower z_plane position for the CA endcap,
   // defined by https://arxiv.org/abs/1206.3015 in the bulleted list
   // after Eq. (A.19) EXCEPT that here we use a factor of 1.6 instead of 1.5
   // to put the plane farther from center_A.
   const double z_cut_CA_lower = 1.6 * center_EA[2];
-  // z_cut_CA_upper is the upper z_plane position for the CA endcap,
-  // which isn't defined in https://arxiv.org/abs/1206.3015 (because the
-  // maps are different).  We choose this plane to make the maps
-  // less extreme.
-  const double z_cut_CA_upper =
-      std::max(0.5 * (z_cut_CA_lower + inner_radius_C), 0.7 * inner_radius_C);
   // z_cut_EA_upper is the upper z_plane position for the EA endcap,
   // which isn't defined in https://arxiv.org/abs/1206.3015 (because the
   // maps are different).  We choose this plane to make the maps
@@ -483,27 +375,6 @@ Domain<3> CylindricalShell::create_domain() const {
   // less extreme.
   const double z_cut_EA_lower = center_A_[2] - 0.7 * outer_radius_A_;
 
-  // CA Filled Cylinder
-  // 5 blocks: 0 thru 4
-  /*
-    add_endcap_to_list_of_maps(
-        CoordinateMaps::UniformCylindricalEndcap(center_EA, make_array<3>(0.0),
-                                                 radius_EA, inner_radius_C,
-                                                 z_cut_CA_lower,
-    z_cut_CA_upper), CoordinateMaps::DiscreteRotation<3>(rotate_to_x_axis));
-
-    // CA Cylinder
-    // 4 blocks: 5 thru 8
-    add_side_to_list_of_maps(
-        CoordinateMaps::UniformCylindricalSide(
-            // codecov complains about the next line being untested.
-            // No idea why, since this entire function is called.
-            // LCOV_EXCL_START
-            center_EA, make_array<3>(0.0), radius_EA, inner_radius_C,
-            // LCOV_EXCL_STOP
-            z_cut_CA_lower, 0.0, z_cut_CA_upper, 0.0),
-        CoordinateMaps::DiscreteRotation<3>(rotate_to_x_axis));
-  */
   // EA Filled Cylinder
   // 5 blocks: 9 thru 13
   add_endcap_to_list_of_maps(
