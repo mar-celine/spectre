@@ -179,30 +179,15 @@ class CylindricalShell : public DomainCreator<3> {
     static constexpr Options::String help = {
         "Grid coordinates of center for Object A, which is at x>0."};
   };
-  struct CenterB {
-    using type = std::array<double, 3>;
-    static constexpr Options::String help = {
-        "Grid coordinates of center for Object B, which is at x<0."};
-  };
   struct RadiusA {
     using type = double;
     static constexpr Options::String help = {
         "Grid-coordinate radius of grid boundary around Object A."};
   };
-  struct RadiusB {
-    using type = double;
-    static constexpr Options::String help = {
-        "Grid-coordinate radius of grid boundary around Object B."};
-  };
   struct IncludeInnerSphereA {
     using type = bool;
     static constexpr Options::String help = {
         "Add an extra spherical layer of Blocks around Object A."};
-  };
-  struct IncludeInnerSphereB {
-    using type = bool;
-    static constexpr Options::String help = {
-        "Add an extra spherical layer of Blocks around Object B."};
   };
   struct OuterRadius {
     using type = double;
@@ -268,9 +253,8 @@ class CylindricalShell : public DomainCreator<3> {
   };
 
   using time_independent_options =
-      tmpl::list<CenterA, CenterB, RadiusA, RadiusB, IncludeInnerSphereA,
-                 IncludeInnerSphereB, OuterRadius, UseEquiangularMap,
-                 InitialRefinement, InitialGridPoints>;
+      tmpl::list<CenterA, RadiusA, IncludeInnerSphereA, OuterRadius,
+                 UseEquiangularMap, InitialRefinement, InitialGridPoints>;
 
   template <typename Metavariables>
   using basic_options = tmpl::conditional_t<
@@ -299,9 +283,8 @@ class CylindricalShell : public DomainCreator<3> {
       "each of the two compact objects A and B."};
 
   CylindricalShell(
-      std::array<double, 3> center_A, std::array<double, 3> center_B,
-      double radius_A, double radius_B, bool include_inner_sphere_A,
-      bool include_inner_sphere_B, double outer_radius,
+      std::array<double, 3> center_A, double radius_A,
+      bool include_inner_sphere_A, double outer_radius,
       bool use_equiangular_map,
       const typename InitialRefinement::type& initial_refinement,
       const typename InitialGridPoints::type& initial_grid_points,
@@ -313,9 +296,8 @@ class CylindricalShell : public DomainCreator<3> {
 
   CylindricalShell(
       bco::TimeDependentMapOptions time_dependent_options,
-      std::array<double, 3> center_A, std::array<double, 3> center_B,
-      double radius_A, double radius_B, bool include_inner_sphere_A,
-      bool include_inner_sphere_B, double outer_radius,
+      std::array<double, 3> center_A, double radius_A,
+      bool include_inner_sphere_A, double outer_radius,
       bool use_equiangular_map,
       const typename InitialRefinement::type& initial_refinement,
       const typename InitialGridPoints::type& initial_grid_points,
@@ -362,11 +344,8 @@ class CylindricalShell : public DomainCreator<3> {
   // z direction.  At the end, there will be another rotation back to
   // the grid frame (where the centers are offset in the x direction).
   std::array<double, 3> center_A_{};
-  std::array<double, 3> center_B_{};
   double radius_A_{};
-  double radius_B_{};
   double outer_radius_A_{};
-  double outer_radius_B_{};
   bool include_inner_sphere_A_{};
   double outer_radius_{};
   bool use_equiangular_map_{false};

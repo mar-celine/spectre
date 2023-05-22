@@ -56,9 +56,8 @@ std::array<double, 3> flip_about_xy_plane(const std::array<double, 3> input) {
 
 namespace domain::creators {
 CylindricalShell::CylindricalShell(
-    std::array<double, 3> center_A, std::array<double, 3> center_B,
-    double radius_A, double radius_B, bool include_inner_sphere_A,
-    bool include_inner_sphere_B, double outer_radius, bool use_equiangular_map,
+    std::array<double, 3> center_A, double radius_A,
+    bool include_inner_sphere_A, double outer_radius, bool use_equiangular_map,
     const typename InitialRefinement::type& initial_refinement,
     const typename InitialGridPoints::type& initial_grid_points,
     std::unique_ptr<domain::BoundaryConditions::BoundaryCondition>
@@ -67,9 +66,7 @@ CylindricalShell::CylindricalShell(
         outer_boundary_condition,
     const Options::Context& context)
     : center_A_(rotate_to_z_axis(center_A)),
-      center_B_(rotate_to_z_axis(center_B)),
       radius_A_(radius_A),
-      radius_B_(radius_B),
       include_inner_sphere_A_(include_inner_sphere_A),
       outer_radius_(outer_radius),
       use_equiangular_map_(use_equiangular_map),
@@ -205,9 +202,8 @@ CylindricalShell::CylindricalShell(
 
 CylindricalShell::CylindricalShell(
     bco::TimeDependentMapOptions time_dependent_options,
-    std::array<double, 3> center_A, std::array<double, 3> center_B,
-    double radius_A, double radius_B, bool include_inner_sphere_A,
-    bool include_inner_sphere_B, double outer_radius, bool use_equiangular_map,
+    std::array<double, 3> center_A, double radius_A,
+    bool include_inner_sphere_A, double outer_radius, bool use_equiangular_map,
     const typename InitialRefinement::type& initial_refinement,
     const typename InitialGridPoints::type& initial_grid_points,
     std::unique_ptr<domain::BoundaryConditions::BoundaryCondition>
@@ -215,9 +211,8 @@ CylindricalShell::CylindricalShell(
     std::unique_ptr<domain::BoundaryConditions::BoundaryCondition>
         outer_boundary_condition,
     const Options::Context& context)
-    : CylindricalShell(center_A, center_B, radius_A, radius_B,
-                       include_inner_sphere_A, include_inner_sphere_B,
-                       outer_radius, use_equiangular_map, initial_refinement,
+    : CylindricalShell(center_A, radius_A, include_inner_sphere_A, outer_radius,
+                       use_equiangular_map, initial_refinement,
                        initial_grid_points, std::move(inner_boundary_condition),
                        std::move(outer_boundary_condition), context) {
   // The size map, which is applied from the grid to distorted frame, currently
@@ -236,11 +231,11 @@ CylindricalShell::CylindricalShell(
 
   time_dependent_options_->build_maps(
       std::array{rotate_from_z_to_x_axis(center_A_),
-                 rotate_from_z_to_x_axis(center_B_)},
+                 rotate_from_z_to_x_axis(center_A_)},
       std::array{std::optional<double>{radius_A_},
-                 std::optional<double>{radius_B_}},
+                 std::optional<double>{radius_A_}},
       std::array{std::optional<double>{outer_radius_A_},
-                 std::optional<double>{outer_radius_B_}},
+                 std::optional<double>{outer_radius_A_}},
       outer_radius_);
 }
 
@@ -270,7 +265,7 @@ Domain<3> CylindricalShell::create_domain() const {
   // the EE spheres exist), and is the radius of the circle where the EB
   // sphere intersects the cutting plane.
   const std::array<double, 3> center_EA = {0.0, 0.0, center_A_[2]};
-  const double radius_MB = std::abs(center_B_[2]);
+  const double radius_MB = std::abs(center_A_[2]);
   const double radius_EA = sqrt(square(center_EA[2]) + square(radius_MB));
 
   // Construct vector<CoordMap>s that go from logical coordinates to
@@ -375,6 +370,17 @@ Domain<3> CylindricalShell::create_domain() const {
   // less extreme.
   const double z_cut_EA_lower = center_A_[2] - 0.7 * outer_radius_A_;
 
+  std::cout << "Options passed to cylinder maps:" << std::endl;
+  std::cout << "center_A_: " << center_A_[0] << ", " << center_A_[1] << ", "
+            << center_A_[2] << std::endl;
+  std::cout << "center_EA: " << center_EA[0] << ", " << center_EA[1] << ", "
+            << center_EA[2] << std::endl;
+  std::cout << "outer_radius_A_: " << outer_radius_A_ << std::endl;
+  std::cout << "radius_EA: " << radius_EA << std::endl;
+  std::cout << "z_cut_EA_upper: " << z_cut_EA_upper << std::endl;
+  std::cout << "z_cut_CA_lower: " << z_cut_CA_lower << std::endl;
+  std::cout << "z_cut_EA_lower: " << z_cut_EA_lower << std::endl;
+
   // EA Filled Cylinder
   // 5 blocks: 9 thru 13
   add_endcap_to_list_of_maps(
@@ -402,6 +408,9 @@ Domain<3> CylindricalShell::create_domain() const {
   if (include_inner_sphere_A_) {
     const double z_cut_upper = center_A_[2] + 0.7 * radius_A_;
     const double z_cut_lower = center_A_[2] - 0.7 * radius_A_;
+    std::cout << "z_cut_upper: " << z_cut_upper << std::endl;
+    std::cout << "z_cut_lower: " << z_cut_lower << std::endl;
+
     // InnerSphereEA Filled Cylinder
     // 5 blocks
     add_endcap_to_list_of_maps(
@@ -465,24 +474,9 @@ Domain<3> CylindricalShell::create_domain() const {
           tnsr::I<double, 3, Frame::Grid>(rotate_from_z_to_x_axis(center_A_)),
           abutting_directions_A});
 
-  std::unordered_map<size_t, Direction<3>> abutting_directions_B;
-  for (size_t i = 0; i < 5; ++i) {
-    abutting_directions_B.emplace(18 + i, Direction<3>::lower_zeta());
-    abutting_directions_B.emplace(32 + i, Direction<3>::lower_zeta());
-    }
-    for (size_t i = 0; i < 4; ++i) {
-      abutting_directions_B.emplace(23 + i, Direction<3>::lower_xi());
-    }
-    excision_spheres.emplace(
-        "ExcisionSphereB",
-        ExcisionSphere<3>{
-            radius_B_,
-            tnsr::I<double, 3, Frame::Grid>(rotate_from_z_to_x_axis(center_B_)),
-            abutting_directions_B});
-
-    Domain<3> domain{std::move(coordinate_maps), std::move(excision_spheres),
-                     block_names_, block_groups_};
-    return domain;
+  Domain<3> domain{std::move(coordinate_maps), std::move(excision_spheres),
+                   block_names_, block_groups_};
+  return domain;
 }
 
 std::vector<DirectionMap<
