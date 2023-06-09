@@ -200,6 +200,11 @@ class CylindricalShell : public DomainCreator<3> {
         "Distribute grid points equiangularly in 2d wedges."};
     static bool suggested_value() { return false; }
   };
+  struct OpeningColatitude {
+    using type = double;
+    static constexpr Options::String help = {
+        "The opening angle of the polar endcap measured from the polar axis."};
+  };
 
   struct InitialRefinement {
     using type =
@@ -254,7 +259,8 @@ class CylindricalShell : public DomainCreator<3> {
 
   using time_independent_options =
       tmpl::list<CenterA, RadiusA, IncludeInnerSphereA, OuterRadius,
-                 UseEquiangularMap, InitialRefinement, InitialGridPoints>;
+                 UseEquiangularMap, /*OpeningColatitude,*/ InitialRefinement,
+                 InitialGridPoints>;
 
   template <typename Metavariables>
   using basic_options = tmpl::conditional_t<
