@@ -30,6 +30,7 @@
 #include "Domain/Structure/ExcisionSphere.hpp"
 #include "Domain/Structure/OrientationMap.hpp"
 #include "NumericalAlgorithms/RootFinding/QuadraticEquation.hpp"
+#include "Options/ParseError.hpp"
 
 #include <iostream>
 
@@ -73,7 +74,7 @@ CylindricalShell::CylindricalShell(
       inner_boundary_condition_(std::move(inner_boundary_condition)),
       outer_boundary_condition_(std::move(outer_boundary_condition)) {
   std::cout << "Inside CylindricalShell constructor." << std::endl;
-  if (center_A_[2] <= 0.0) {
+  /*if (center_A_[2] <= 0.0) {
     PARSE_ERROR(
         context,
         "The x-coordinate of the input CenterA is expected to be positive");
@@ -95,7 +96,7 @@ CylindricalShell::CylindricalShell(
         context,
         "Cannot have periodic boundary conditions with a binary domain");
   }
-
+  */
   // outer_radius_A is the outer radius of the inner sphere A, if it exists.
   // If the inner sphere A does not exist, then outer_radius_A is the same
   // as radius_A_.
