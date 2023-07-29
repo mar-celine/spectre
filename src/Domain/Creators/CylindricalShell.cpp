@@ -355,6 +355,7 @@ Domain<3> CylindricalShell::create_domain() const {
                 new_logical_to_cylindrical_shell_maps.end()));
       };
 
+
   // z_cut_CA_lower is the lower z_plane position for the CA endcap,
   // defined by https://arxiv.org/abs/1206.3015 in the bulleted list
   // after Eq. (A.19) EXCEPT that here we use a factor of 1.6 instead of 1.5
@@ -370,12 +371,30 @@ Domain<3> CylindricalShell::create_domain() const {
   // maps are different).  We choose this plane to make the maps
   // less extreme.
   const double z_cut_EA_lower = center_A_[2] - 0.7 * outer_radius_A_;
+  //center_A_[0] = 0.0;
+  //center_A_[1] = 0.0;
+  //center_A_[2] = 0.0;
+  const double opening_colatitude_upper = M_PI_4;
+  const double opening_colatitude_lower = M_PI_4;
+  const double z_cut_upper =
+    center_A_[2] + radius_A_ * cos(opening_colatitude_upper);
+  const double z_cut_lower =
+    center_A_[2] - radius_A_ * cos(opening_colatitude_lower);
+  //const double z_cut_EA_upper =
+  //center_A_[2] + outer_radius_A_ * cos(opening_colatitude_upper);
+  //const double z_cut_EA_lower =
+  //center_A_[2] - outer_radius_A_ * cos(opening_colatitude_lower);
+  //const double z_cut_CA_upper =
+  //center_A_[2] - radius_EA * cos(opening_colatitude_upper);
+  //const double z_cut_CA_lower =
+  //center_A_[2] + radius_EA * cos(opening_colatitude_lower);
 
   std::cout << "Options passed to cylinder maps:" << std::endl;
   std::cout << "center_A_: " << center_A_[0] << ", " << center_A_[1] << ", "
             << center_A_[2] << std::endl;
   std::cout << "center_EA: " << center_EA[0] << ", " << center_EA[1] << ", "
             << center_EA[2] << std::endl;
+  std::cout << "radius_A_: " << radius_A_ << std::endl;
   std::cout << "outer_radius_A_: " << outer_radius_A_ << std::endl;
   std::cout << "radius_EA: " << radius_EA << std::endl;
   std::cout << "z_cut_EA_upper: " << z_cut_EA_upper << std::endl;
@@ -406,9 +425,11 @@ Domain<3> CylindricalShell::create_domain() const {
           outer_radius_A_, radius_EA, -z_cut_EA_lower, 0.0),
       CoordinateMaps::DiscreteRotation<3>(rotate_to_minus_x_axis));
 
+
+
   if (include_inner_sphere_A_) {
-    const double z_cut_upper = center_A_[2] + 0.7 * radius_A_;
-    const double z_cut_lower = center_A_[2] - 0.7 * radius_A_;
+    //const double z_cut_upper = center_A_[2] + 0.7 * radius_A_;
+    //const double z_cut_lower = center_A_[2] - 0.7 * radius_A_;
     std::cout << "z_cut_upper: " << z_cut_upper << std::endl;
     std::cout << "z_cut_lower: " << z_cut_lower << std::endl;
 
