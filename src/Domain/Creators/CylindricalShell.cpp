@@ -57,8 +57,8 @@ std::array<double, 3> flip_about_xy_plane(const std::array<double, 3> input) {
 
 namespace domain::creators {
 CylindricalShell::CylindricalShell(
-    std::array<double, 3> center_A, double radius_A,
-    bool include_inner_sphere_A, double outer_radius, bool use_equiangular_map,
+    std::array<double, 3> center, double radius_A, bool include_inner_sphere_A,
+    double outer_radius, bool use_equiangular_map, double opening_colatitude,
     const typename InitialRefinement::type& initial_refinement,
     const typename InitialGridPoints::type& initial_grid_points,
     std::unique_ptr<domain::BoundaryConditions::BoundaryCondition>
@@ -66,23 +66,22 @@ CylindricalShell::CylindricalShell(
     std::unique_ptr<domain::BoundaryConditions::BoundaryCondition>
         outer_boundary_condition,
     const Options::Context& context)
-    : center_A_(rotate_to_z_axis(center_A)),
+    : center_(rotate_to_z_axis(center)),
       radius_A_(radius_A),
       include_inner_sphere_A_(include_inner_sphere_A),
       outer_radius_(outer_radius),
       use_equiangular_map_(use_equiangular_map),
+      opening_colatitude_(opening_colatitude),
       inner_boundary_condition_(std::move(inner_boundary_condition)),
       outer_boundary_condition_(std::move(outer_boundary_condition)) {
-  std::cout << "Inside CylindricalShell constructor." << std::endl;
-  /*if (center_A_[2] <= 0.0) {
-    PARSE_ERROR(
-        context,
-        "The x-coordinate of the input CenterA is expected to be positive");
-  }
   if (radius_A_ <= 0.0) {
     PARSE_ERROR(context, "RadiusA is expected to be positive");
   }
-
+  if (opening_colatitude_ >= 0.9 * M_PI_2) {
+    PARSE_ERROR(context,
+                "For an opening colatitude of M_PI_2, the cylindrical side "
+                "blocks become degenerate.");
+  }
   if ((outer_boundary_condition_ == nullptr) xor
       (inner_boundary_condition_ == nullptr)) {
     PARSE_ERROR(context,
@@ -96,15 +95,12 @@ CylindricalShell::CylindricalShell(
         context,
         "Cannot have periodic boundary conditions with a binary domain");
   }
-  */
   // outer_radius_A is the outer radius of the inner sphere A, if it exists.
   // If the inner sphere A does not exist, then outer_radius_A is the same
   // as radius_A_.
   // If the inner sphere does exist, the algorithm for computing
   // outer_radius_A is the same as in SpEC when there is one inner shell.
-  outer_radius_A_ = include_inner_sphere_A_
-                        ? radius_A_ + 0.5 * (std::abs(center_A_[2]) - radius_A_)
-                        : radius_A_;
+  outer_radius_A_ = include_inner_sphere_A_ ? 4.0 : radius_A_;
 
   number_of_blocks_ = 46;
   if (include_inner_sphere_A) {
@@ -203,8 +199,8 @@ CylindricalShell::CylindricalShell(
 
 CylindricalShell::CylindricalShell(
     bco::TimeDependentMapOptions time_dependent_options,
-    std::array<double, 3> center_A, double radius_A,
-    bool include_inner_sphere_A, double outer_radius, bool use_equiangular_map,
+    std::array<double, 3> center, double radius_A, bool include_inner_sphere_A,
+    double outer_radius, bool use_equiangular_map, double opening_colatitude,
     const typename InitialRefinement::type& initial_refinement,
     const typename InitialGridPoints::type& initial_grid_points,
     std::unique_ptr<domain::BoundaryConditions::BoundaryCondition>
@@ -212,9 +208,10 @@ CylindricalShell::CylindricalShell(
     std::unique_ptr<domain::BoundaryConditions::BoundaryCondition>
         outer_boundary_condition,
     const Options::Context& context)
-    : CylindricalShell(center_A, radius_A, include_inner_sphere_A, outer_radius,
-                       use_equiangular_map, initial_refinement,
-                       initial_grid_points, std::move(inner_boundary_condition),
+    : CylindricalShell(center, radius_A, include_inner_sphere_A, outer_radius,
+                       use_equiangular_map, opening_colatitude,
+                       initial_refinement, initial_grid_points,
+                       std::move(inner_boundary_condition),
                        std::move(outer_boundary_condition), context) {
   // The size map, which is applied from the grid to distorted frame, currently
   // needs to start and stop at certain radii around each excision. If the inner
@@ -231,8 +228,8 @@ CylindricalShell::CylindricalShell(
   time_dependent_options_ = std::move(time_dependent_options);
 
   time_dependent_options_->build_maps(
-      std::array{rotate_from_z_to_x_axis(center_A_),
-                 rotate_from_z_to_x_axis(center_A_)},
+      std::array{rotate_from_z_to_x_axis(center_),
+                 rotate_from_z_to_x_axis(center_)},
       std::array{std::optional<double>{radius_A_},
                  std::optional<double>{radius_A_}},
       std::array{std::optional<double>{outer_radius_A_},
@@ -253,21 +250,7 @@ Domain<3> CylindricalShell::create_domain() const {
       Direction<3>::lower_zeta(), Direction<3>::upper_eta(),
       Direction<3>::upper_xi()}};
 
-  // The labels EA, EB, EE, etc are from Figure 20 of
-  // https://arxiv.org/abs/1206.3015
-  //
-  // center_EA and radius_EA are the center and outer-radius of the
-  // cylindered-sphere EA in Figure 20.
-  //
-  // center_EB and radius_EB are the center and outer-radius of the
-  // cylindered-sphere EB in Figure 20.
-  //
-  // radius_MB is eq. A16 or A23 in the paper (depending on whether
-  // the EE spheres exist), and is the radius of the circle where the EB
-  // sphere intersects the cutting plane.
-  const std::array<double, 3> center_EA = {0.0, 0.0, center_A_[2]};
-  const double radius_MB = std::abs(center_A_[2]);
-  const double radius_EA = sqrt(square(center_EA[2]) + square(radius_MB));
+  const double outermost_radius = 10.0;
 
   // Construct vector<CoordMap>s that go from logical coordinates to
   // various blocks making up a unit right cylinder.  These blocks are
@@ -355,57 +338,46 @@ Domain<3> CylindricalShell::create_domain() const {
                 new_logical_to_cylindrical_shell_maps.end()));
       };
 
-  // z_cut_CA_lower is the lower z_plane position for the CA endcap,
-  // defined by https://arxiv.org/abs/1206.3015 in the bulleted list
-  // after Eq. (A.19) EXCEPT that here we use a factor of 1.6 instead of 1.5
-  // to put the plane farther from center_A.
-  const double z_cut_CA_lower = 1.6 * center_EA[2];
-  // z_cut_EA_upper is the upper z_plane position for the EA endcap,
-  // which isn't defined in https://arxiv.org/abs/1206.3015 (because the
-  // maps are different).  We choose this plane to make the maps
-  // less extreme.
-  const double z_cut_EA_upper = center_A_[2] + 0.7 * outer_radius_A_;
-  // z_cut_EA_lower is the lower z_plane position for the EA endcap,
-  // which isn't defined in https://arxiv.org/abs/1206.3015 (because the
-  // maps are different).  We choose this plane to make the maps
-  // less extreme.
-  const double z_cut_EA_lower = center_A_[2] - 0.7 * outer_radius_A_;
-  // center_A_[0] = 0.0;
-  // center_A_[1] = 0.0;
-  // center_A_[2] = 0.0;
-  const double opening_colatitude_upper = M_PI_4;
-  const double opening_colatitude_lower = M_PI_4;
-  const double z_cut_upper =
-      center_A_[2] + radius_A_ * cos(opening_colatitude_upper);
-  const double z_cut_lower =
-      center_A_[2] - radius_A_ * cos(opening_colatitude_lower);
-  // const double z_cut_EA_upper =
-  // center_A_[2] + outer_radius_A_ * cos(opening_colatitude_upper);
-  // const double z_cut_EA_lower =
-  // center_A_[2] - outer_radius_A_ * cos(opening_colatitude_lower);
-  // const double z_cut_CA_upper =
-  // center_A_[2] - radius_EA * cos(opening_colatitude_upper);
-  // const double z_cut_CA_lower =
-  // center_A_[2] + radius_EA * cos(opening_colatitude_lower);
+  const double opening_colatitude_outer_sphere_upper = opening_colatitude_;
+  const double opening_colatitude_outer_sphere_lower = opening_colatitude_;
+  const double z_cut_Outer_upper =
+      center_[2] +
+      outermost_radius * cos(opening_colatitude_outer_sphere_upper);
+  const double z_cut_Outer_lower =
+      center_[2] -
+      outermost_radius * cos(opening_colatitude_outer_sphere_lower);
+  const double opening_colatitude_middle_sphere_upper = opening_colatitude_;
+  const double opening_colatitude_middle_sphere_lower = opening_colatitude_;
+
+  const double z_cut_Middle_upper =
+      center_[2] +
+      outer_radius_A_ * cos(opening_colatitude_middle_sphere_upper);
+  const double z_cut_Middle_lower =
+      center_[2] -
+      outer_radius_A_ * cos(opening_colatitude_middle_sphere_lower);
+  const double opening_colatitude_inner_sphere_upper = opening_colatitude_;
+  const double opening_colatitude_inner_sphere_lower = opening_colatitude_;
+  const double z_cut_Inner_upper =
+      center_[2] + radius_A_ * cos(opening_colatitude_inner_sphere_upper);
+  const double z_cut_Inner_lower =
+      center_[2] - radius_A_ * cos(opening_colatitude_inner_sphere_lower);
 
   std::cout << "Options passed to cylinder maps:" << std::endl;
-  std::cout << "center_A_: " << center_A_[0] << ", " << center_A_[1] << ", "
-            << center_A_[2] << std::endl;
-  std::cout << "center_EA: " << center_EA[0] << ", " << center_EA[1] << ", "
-            << center_EA[2] << std::endl;
+  std::cout << "center_: " << center_[0] << ", " << center_[1] << ", "
+            << center_[2] << std::endl;
   std::cout << "radius_A_: " << radius_A_ << std::endl;
   std::cout << "outer_radius_A_: " << outer_radius_A_ << std::endl;
-  std::cout << "radius_EA: " << radius_EA << std::endl;
-  std::cout << "z_cut_EA_upper: " << z_cut_EA_upper << std::endl;
-  std::cout << "z_cut_CA_lower: " << z_cut_CA_lower << std::endl;
-  std::cout << "z_cut_EA_lower: " << z_cut_EA_lower << std::endl;
+  std::cout << "outermost_radius: " << outermost_radius << std::endl;
+  std::cout << "z_cut_Middle_upper: " << z_cut_Middle_upper << std::endl;
+  std::cout << "z_cut_Outer_upper: " << z_cut_Outer_upper << std::endl;
+  std::cout << "z_cut_Middle_lower: " << z_cut_Middle_lower << std::endl;
 
   // EA Filled Cylinder
   // 5 blocks: 9 thru 13
   add_endcap_to_list_of_maps(
-      CoordinateMaps::UniformCylindricalEndcap(center_A_, center_EA,
-                                               outer_radius_A_, radius_EA,
-                                               z_cut_EA_upper, z_cut_CA_lower),
+      CoordinateMaps::UniformCylindricalEndcap(
+          center_, center_, outer_radius_A_, outermost_radius,
+          z_cut_Middle_upper, z_cut_Outer_upper),
       CoordinateMaps::DiscreteRotation<3>(rotate_to_x_axis));
 
   // EA Cylinder
@@ -413,47 +385,50 @@ Domain<3> CylindricalShell::create_domain() const {
   add_side_to_list_of_maps(
       // For some reason codecov complains about the next line.
       CoordinateMaps::UniformCylindricalSide(  // LCOV_EXCL_LINE
-          center_A_, center_EA, outer_radius_A_, radius_EA, z_cut_EA_upper,
-          z_cut_EA_lower, z_cut_CA_lower, 0.0),
+          center_, center_, outer_radius_A_, outermost_radius,
+          z_cut_Middle_upper, z_cut_Middle_lower, z_cut_Outer_upper,
+          z_cut_Outer_lower),
       CoordinateMaps::DiscreteRotation<3>(rotate_to_x_axis));
   // MA Filled Cylinder
   // 5 blocks: 27 thru 31
   add_endcap_to_list_of_maps(
       CoordinateMaps::UniformCylindricalEndcap(
-          flip_about_xy_plane(center_A_), flip_about_xy_plane(center_EA),
-          outer_radius_A_, radius_EA, -z_cut_EA_lower, 0.0),
+          flip_about_xy_plane(center_), flip_about_xy_plane(center_),
+          outer_radius_A_, outermost_radius, -z_cut_Middle_lower,
+          -z_cut_Outer_lower),
       CoordinateMaps::DiscreteRotation<3>(rotate_to_minus_x_axis));
 
   if (include_inner_sphere_A_) {
-    // const double z_cut_upper = center_A_[2] + 0.7 * radius_A_;
-    // const double z_cut_lower = center_A_[2] - 0.7 * radius_A_;
-    std::cout << "z_cut_upper: " << z_cut_upper << std::endl;
-    std::cout << "z_cut_lower: " << z_cut_lower << std::endl;
+    // const double z_cut_upper = center_[2] + 0.7 * radius_A_;
+    // const double z_cut_lower = center_[2] - 0.7 * radius_A_;
+    std::cout << "z_cut_Inner_upper: " << z_cut_Inner_upper << std::endl;
+    std::cout << "z_cut_Inner_lower: " << z_cut_Inner_lower << std::endl;
 
     // InnerSphereEA Filled Cylinder
     // 5 blocks
     add_endcap_to_list_of_maps(
         // For some reason codecov complains about the next function.
         // LCOV_EXCL_START
-        CoordinateMaps::UniformCylindricalEndcap(center_A_, center_A_,
-                                                 radius_A_, outer_radius_A_,
-                                                 z_cut_upper, z_cut_EA_upper),
+        CoordinateMaps::UniformCylindricalEndcap(
+            center_, center_, radius_A_, outer_radius_A_, z_cut_Inner_upper,
+            z_cut_Middle_upper),
         // LCOV_EXCL_START
         CoordinateMaps::DiscreteRotation<3>(rotate_to_x_axis));
     // InnerSphereMA Filled Cylinder
     // 5 blocks
     add_endcap_to_list_of_maps(
         CoordinateMaps::UniformCylindricalEndcap(
-            flip_about_xy_plane(center_A_), flip_about_xy_plane(center_A_),
-            radius_A_, outer_radius_A_, -z_cut_lower, -z_cut_EA_lower),
+            flip_about_xy_plane(center_), flip_about_xy_plane(center_),
+            radius_A_, outer_radius_A_, -z_cut_Inner_lower,
+            -z_cut_Middle_lower),
         CoordinateMaps::DiscreteRotation<3>(rotate_to_minus_x_axis));
     // InnerSphereEA Cylinder
     // 4 blocks
     add_side_to_list_of_maps(
         // For some reason codecov complains about the next line.
         CoordinateMaps::UniformCylindricalSide(  // LCOV_EXCL_LINE
-            center_A_, center_A_, radius_A_, outer_radius_A_, z_cut_upper,
-            z_cut_lower, z_cut_EA_upper, z_cut_EA_lower),
+            center_, center_, radius_A_, outer_radius_A_, z_cut_Inner_upper,
+            z_cut_Inner_lower, z_cut_Middle_upper, z_cut_Middle_lower),
         CoordinateMaps::DiscreteRotation<3>(rotate_to_x_axis));
   }
   // Excision spheres
@@ -490,7 +465,7 @@ Domain<3> CylindricalShell::create_domain() const {
       "ExcisionSphereA",
       ExcisionSphere<3>{
           radius_A_,
-          tnsr::I<double, 3, Frame::Grid>(rotate_from_z_to_x_axis(center_A_)),
+          tnsr::I<double, 3, Frame::Grid>(rotate_from_z_to_x_axis(center_)),
           abutting_directions_A});
 
   Domain<3> domain{std::move(coordinate_maps), std::move(excision_spheres),
@@ -507,7 +482,7 @@ CylindricalShell::external_boundary_conditions() const {
   std::vector<DirectionMap<
       3, std::unique_ptr<domain::BoundaryConditions::BoundaryCondition>>>
       boundary_conditions{number_of_blocks_};
-  /*
+
     for (size_t i = 0; i < 5; ++i) {
       // if (not include_outer_sphere_) {
       //  CA Filled Cylinder
@@ -545,7 +520,6 @@ CylindricalShell::external_boundary_conditions() const {
       }
       last_block += 14;
     }
-  */
   return boundary_conditions;
 }
 

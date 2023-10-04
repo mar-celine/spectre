@@ -259,7 +259,7 @@ class CylindricalShell : public DomainCreator<3> {
 
   using time_independent_options =
       tmpl::list<CenterA, RadiusA, IncludeInnerSphereA, OuterRadius,
-                 UseEquiangularMap, /*OpeningColatitude,*/ InitialRefinement,
+                 UseEquiangularMap, OpeningColatitude, InitialRefinement,
                  InitialGridPoints>;
 
   template <typename Metavariables>
@@ -291,7 +291,7 @@ class CylindricalShell : public DomainCreator<3> {
   CylindricalShell(
       std::array<double, 3> center_A, double radius_A,
       bool include_inner_sphere_A, double outer_radius,
-      bool use_equiangular_map,
+      bool use_equiangular_map, double opening_colatitude,
       const typename InitialRefinement::type& initial_refinement,
       const typename InitialGridPoints::type& initial_grid_points,
       std::unique_ptr<domain::BoundaryConditions::BoundaryCondition>
@@ -304,7 +304,7 @@ class CylindricalShell : public DomainCreator<3> {
       bco::TimeDependentMapOptions time_dependent_options,
       std::array<double, 3> center_A, double radius_A,
       bool include_inner_sphere_A, double outer_radius,
-      bool use_equiangular_map,
+      bool use_equiangular_map, double opening_colatitude,
       const typename InitialRefinement::type& initial_refinement,
       const typename InitialGridPoints::type& initial_grid_points,
       std::unique_ptr<domain::BoundaryConditions::BoundaryCondition>
@@ -349,12 +349,13 @@ class CylindricalShell : public DomainCreator<3> {
   // construct the map in a frame where the centers are offset in the
   // z direction.  At the end, there will be another rotation back to
   // the grid frame (where the centers are offset in the x direction).
-  std::array<double, 3> center_A_{};
+  std::array<double, 3> center_{};
   double radius_A_{};
   double outer_radius_A_{};
   bool include_inner_sphere_A_{};
   double outer_radius_{};
   bool use_equiangular_map_{false};
+  double opening_colatitude_{};
   typename std::vector<std::array<size_t, 3>> initial_refinement_{};
   typename std::vector<std::array<size_t, 3>> initial_grid_points_{};
   size_t number_of_blocks_{};
