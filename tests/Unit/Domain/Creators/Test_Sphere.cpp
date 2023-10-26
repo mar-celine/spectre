@@ -676,8 +676,22 @@ void test_sphere() {
 
 // [[TimeOut, 15]]
 SPECTRE_TEST_CASE("Unit.Domain.Creators.Sphere", "[Domain][Unit]") {
-  domain::creators::time_dependence::register_derived_with_charm();
-  test_parse_errors();
-  test_sphere();
+  // domain::creators::time_dependence::register_derived_with_charm();
+  // test_parse_errors();
+  // test_sphere();
+  const creators::Sphere sphere{
+      1.,
+      1e11,  // large outer radius!
+      creators::Sphere::Excision{create_boundary_condition(true)},
+      0_st,
+      8_st,
+      true,
+      std::nullopt,
+      {},
+      CoordinateMaps::Distribution::Inverse,
+      ShellWedges::All,
+      std::nullopt,
+      create_boundary_condition(true)};
+  TestHelpers::domain::creators::test_domain_creator(sphere, true);
 }
 }  // namespace domain

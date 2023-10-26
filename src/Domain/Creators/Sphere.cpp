@@ -350,7 +350,7 @@ Domain<3> Sphere::create_domain() const {
     }
   }
 
-  Domain<3> domain{std::move(coord_maps),       corners,      {},
+  Domain<3> domain{std::move(coord_maps), /*corners,      {},*/
                    std::move(excision_spheres), block_names_, block_groups_};
   ASSERT(domain.blocks().size() == num_blocks_,
          "Unexpected number of blocks. Expected "

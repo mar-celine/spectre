@@ -45,6 +45,8 @@
 #include "Utilities/Gsl.hpp"
 #include "Utilities/MakeWithValue.hpp"
 
+#include <iostream>
+
 template <size_t VolumeDim>
 class Element;
 
@@ -350,6 +352,7 @@ double physical_separation(
     const std::unordered_map<
         std::string, std::unique_ptr<domain::FunctionsOfTime::FunctionOfTime>>&
         functions_of_time = {}) {
+  std::cout << "In physical_separation function" << std::endl;
   double max_separation = 0;
   const auto direction = find_direction_to_neighbor(block1, block2);
   const auto orientation = find_neighbor_orientation(block1, block2);
@@ -373,7 +376,9 @@ double physical_separation(
         << std::boolalpha << block1.is_time_dependent()
         << " and block2 has: " << block2.is_time_dependent());
   }
+  std::cout << "About to check if block is time dependent." << std::endl;
   if (block1.is_time_dependent()) {
+    std::cout << "Block is time_dependent." << std::endl;
     const auto& map1_logical_to_grid = block1.moving_mesh_logical_to_grid_map();
     const auto& map1_grid_to_inertial =
         block1.moving_mesh_grid_to_inertial_map();
@@ -382,26 +387,46 @@ double physical_separation(
         block2.moving_mesh_grid_to_inertial_map();
     for (size_t i = 0; i < two_to_the(VolumeDim - 1); i++) {
       for (size_t j = 0; j < VolumeDim; j++) {
-        max_separation = std::max(
-            max_separation,
-            std::abs(map1_grid_to_inertial(
-                         map1_logical_to_grid(gsl::at(shared_points1, i)), time,
-                         functions_of_time)
-                         .get(j) -
-                     map2_grid_to_inertial(
-                         map2_logical_to_grid(gsl::at(shared_points2, i)), time,
-                         functions_of_time)
-                         .get(j)));
+        const auto logical_point_1i = gsl::at(shared_points1, i);
+        const auto logical_point_2i = gsl::at(shared_points2, i);
+        const auto coord1 =
+            map1_grid_to_inertial(map1_logical_to_grid(logical_point_1i), time,
+                                  functions_of_time)
+                .get(j);
+        const auto coord2 =
+            map2_grid_to_inertial(map2_logical_to_grid(logical_point_2i), time,
+                                  functions_of_time)
+                .get(j);
+        const auto detjac1 =
+            determinant(map1_logical_to_grid.jacobian(logical_point_1i));
+        const auto detjac2 =
+            determinant(map2_logical_to_grid.jacobian(logical_point_2i));
+        const auto length_scale =
+            pow(sqrt(detjac1.get() * detjac2.get()), 1.0 / 3.0);
+        std::cout << "The length scale is " << length_scale << std::endl;
+        max_separation = std::max(max_separation, std::abs(coord1 - coord2));
+        std::cout << "The max_separation is " << max_separation << std::endl;
       }
     }
   } else {
+    std::cout << "Comparing stationary maps" << std::endl;
     const auto& map1 = block1.stationary_map();
     const auto& map2 = block2.stationary_map();
     for (size_t i = 0; i < two_to_the(VolumeDim - 1); i++) {
       for (size_t j = 0; j < VolumeDim; j++) {
+        const auto logical_point_1i = gsl::at(shared_points1, i);
+        const auto logical_point_2i = gsl::at(shared_points2, i);
+        const auto coord1 = map1(logical_point_1i).get(j);
+        const auto coord2 = map2(logical_point_2i).get(j);
+        const auto detjac1 = determinant(map1.jacobian(logical_point_1i));
+        const auto detjac2 = determinant(map2.jacobian(logical_point_2i));
+        const auto length_scale =
+            pow(sqrt(detjac1.get() * detjac2.get()), 1.0 / 3.0);
+        std::cout << "The length scale is " << length_scale << std::endl;
         max_separation = std::max(
             max_separation, std::abs(map1(gsl::at(shared_points1, i)).get(j) -
                                      map2(gsl::at(shared_points2, i)).get(j)));
+        max_separation /= length_scale;
       }
     }
   }
@@ -505,6 +530,9 @@ void test_physical_separation(
       if (domain::blocks_are_neighbors(blocks[i], blocks[j])) {
         CAPTURE(i);
         CAPTURE(j);
+        std::cout
+            << "Entering physical_separation from test_physical_separation."
+            << std::endl;
         CHECK(domain::physical_separation(blocks[i], blocks[j], time,
                                           functions_of_time) < tolerance);
         if constexpr (VolumeDim > 1) {

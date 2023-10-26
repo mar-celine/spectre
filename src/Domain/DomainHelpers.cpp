@@ -11,6 +11,7 @@
 #include <utility>
 
 #include "DataStructures/IndexIterator.hpp"
+#include "DataStructures/Tensor/EagerMath/Determinant.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Domain/Block.hpp"  // IWYU pragma: keep
 #include "Domain/CoordinateMaps/Affine.hpp"
@@ -45,6 +46,8 @@
 #include "Utilities/MakeArray.hpp"
 #include "Utilities/Numeric.hpp"
 #include "Utilities/StdArrayHelpers.hpp"
+
+#include <iostream>
 
 namespace {
 
@@ -291,13 +294,36 @@ std::vector<std::array<size_t, two_to_the(VolumeDim)>> corners_from_two_maps(
               vci_map1.coords_of_corner()});
       double max_separation = 0.0;
       for (size_t j = 0; j < VolumeDim; j++) {
+        const auto detjac1 = determinant(
+            map1->jacobian(tnsr::I<double, VolumeDim, Frame::BlockLogical>{
+                vci_map1.coords_of_corner()}));
+        const auto detjac2 = determinant(
+            map2->jacobian(tnsr::I<double, VolumeDim, Frame::BlockLogical>{
+                vci_map2.coords_of_corner()}));
+        const auto length_scale =
+            pow(sqrt(detjac1.get() * detjac2.get()), 1.0 / 3.0);
+
+        const auto inv_jac1_matrix =
+            map1->inv_jacobian(tnsr::I<double, VolumeDim, Frame::BlockLogical>{
+                vci_map1.coords_of_corner()});
+        const auto inv_jac2_matrix =
+            map2->inv_jacobian(tnsr::I<double, VolumeDim, Frame::BlockLogical>{
+                vci_map2.coords_of_corner()});
+        const auto separation_vector = tenex::evaluate<ti::I>(
+            mapped_coords2(ti::I) - mapped_coords1(ti::I));
+        const auto inv_jac1_dot_separation_vector = tenex::evaluate<ti::J>(
+            inv_jac1_matrix(ti::I, ti::j) * separation_vector(ti::J));
+
         max_separation =
             std::max(max_separation,
                      std::abs(mapped_coords2.get(j) - mapped_coords1.get(j)));
+        std::cout << "In corners from two maps function" << std::endl;
+        max_separation /*/= length_scale*/;
       }
+      std::cout << "Calculated max_separation: " << max_separation << std::endl;
       // If true, then the mapped_coords lie on top of one another.
       // This corner of map2 is assigned the same number as that of map1.
-      if (max_separation < 1.0e-6) {
+      if (max_separation < 1.0e-6 /*0.001*/) {
         // Note: Ideally the threshold would depend on and be proportional
         // to the map size, but for simplicity we assume that maps have sizes
         // that are of order unity. If you are using maps that have sizes
