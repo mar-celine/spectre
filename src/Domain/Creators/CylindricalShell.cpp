@@ -102,7 +102,9 @@ CylindricalShell::CylindricalShell(
   // outer_radius_A is the same as in SpEC when there is one inner shell.
   outer_radius_A_ = include_inner_sphere_A_ ? 4.0 : radius_A_;
 
-  number_of_blocks_ = 46;
+  grid_anchors_["Center"] = tnsr::I<double, 3, Frame::Grid>{center};
+
+  number_of_blocks_ = 14;  // was 46
   if (include_inner_sphere_A) {
     number_of_blocks_ += 14;
   }
@@ -230,10 +232,12 @@ CylindricalShell::CylindricalShell(
   time_dependent_options_->build_maps(
       std::array{rotate_from_z_to_x_axis(center_),
                  rotate_from_z_to_x_axis(center_)},
-      std::array{std::optional<double>{radius_A_},
+      std::make_pair(radius_A_, outer_radius_A_),
+      std::make_pair(radius_A_, outer_radius_A_),
+      /*std::array{std::optional<double>{radius_A_},
                  std::optional<double>{radius_A_}},
       std::array{std::optional<double>{outer_radius_A_},
-                 std::optional<double>{outer_radius_A_}},
+                 std::optional<double>{outer_radius_A_}},*/
       outer_radius_);
 }
 
@@ -479,6 +483,8 @@ CylindricalShell::external_boundary_conditions() const {
   if (outer_boundary_condition_ == nullptr) {
     return {};
   }
+  std::cout << "In function external_boundary_conditions." << std::endl;
+  std::cout << "Number of blocks is: " << number_of_blocks_ << std::endl;
   std::vector<DirectionMap<
       3, std::unique_ptr<domain::BoundaryConditions::BoundaryCondition>>>
       boundary_conditions{number_of_blocks_};
@@ -486,41 +492,73 @@ CylindricalShell::external_boundary_conditions() const {
     for (size_t i = 0; i < 5; ++i) {
       // if (not include_outer_sphere_) {
       //  CA Filled Cylinder
-      boundary_conditions[i][Direction<3>::upper_zeta()] =
-          outer_boundary_condition_->get_clone();
+      //    boundary_conditions[i][Direction<3>::upper_zeta()] =
+      //       outer_boundary_condition_->get_clone();
       if (not include_inner_sphere_A_) {
-        // EA Filled Cylinder
+        boundary_conditions[i][Direction<3>::upper_zeta()] =
+            outer_boundary_condition_->get_clone();
+        // std::cout<<"Setting outer upper zeta boundary conditions for
+        // i+0="<<i+0<<std::endl;
+        //  EA Filled Cylinder
+        boundary_conditions[i + 0][Direction<3>::lower_zeta()] =
+            inner_boundary_condition_->get_clone();
+        // std::cout<<"Setting inner lower zeta boundary conditions for
+        // i+0="<<i+0<<std::endl;
+        //  MA Filled Cylinder
         boundary_conditions[i + 9][Direction<3>::lower_zeta()] =
             inner_boundary_condition_->get_clone();
-        // MA Filled Cylinder
-        boundary_conditions[i + 27][Direction<3>::lower_zeta()] =
-            inner_boundary_condition_->get_clone();
+        // std::cout<<"Setting inner lower zeta boundary conditions for
+        // i+9="<<i+9<<std::endl;
+        boundary_conditions[i + 9][Direction<3>::upper_zeta()] =
+            outer_boundary_condition_->get_clone();
+        // std::cout<<"Setting inner lower zeta boundary conditions for
+        // i+9="<<i+9<<std::endl;
       }
     }
     for (size_t i = 0; i < 4; ++i) {
       //  CA Cylinder
       boundary_conditions[i + 5][Direction<3>::upper_xi()] =
           outer_boundary_condition_->get_clone();
+      boundary_conditions[i + 5][Direction<3>::lower_xi()] =
+          inner_boundary_condition_->get_clone();
+      // std::cout<<"Setting outer upper xi boundary conditions for
+      // i+5="<<i+5<<std::endl;
     }
-
-    size_t last_block = 46;
+    std::cout << "Got to this part of the code." << std::endl;
+    size_t last_block = 14;  // was 46
     if (include_inner_sphere_A_) {
       for (size_t i = 0; i < 5; ++i) {
         // InnerSphereEA Filled Cylinder
         boundary_conditions[last_block + i][Direction<3>::lower_zeta()] =
             inner_boundary_condition_->get_clone();
+        boundary_conditions[last_block + i][Direction<3>::upper_zeta()] =
+            outer_boundary_condition_->get_clone();
+        // std::cout<<"Setting inner lower zeta boundary conditions for
+        // last_block+i="<<last_block + i<<std::endl;
+
         // InnerSphereMA Filled Cylinder
         boundary_conditions[last_block + i + 5][Direction<3>::lower_zeta()] =
             inner_boundary_condition_->get_clone();
+        boundary_conditions[last_block + i + 5][Direction<3>::upper_zeta()] =
+            outer_boundary_condition_->get_clone();
+
+        // std::cout<<"Setting inner lower zeta boundary conditions for
+        // i+5="<<i+5<<std::endl;
       }
       for (size_t i = 0; i < 4; ++i) {
         // InnerSphereEA Cylinder
         boundary_conditions[last_block + i + 10][Direction<3>::lower_xi()] =
             inner_boundary_condition_->get_clone();
+        boundary_conditions[last_block + i + 10][Direction<3>::upper_xi()] =
+            outer_boundary_condition_->get_clone();
+
+        std::cout << "Setting inner lower xi boundary conditions for i+19="
+                  << i + 19 << std::endl;
       }
       last_block += 14;
     }
-  return boundary_conditions;
+    std::cout << "About to return boundary_conditions. " << std::endl;
+    return boundary_conditions;
 }
 
 std::vector<std::array<size_t, 3>> CylindricalShell::initial_extents() const {

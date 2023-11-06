@@ -322,6 +322,11 @@ class CylindricalShell : public DomainCreator<3> {
 
   Domain<3> create_domain() const override;
 
+  std::unordered_map<std::string, tnsr::I<double, 3, Frame::Grid>>
+  grid_anchors() const override {
+    return grid_anchors_;
+  }
+
   std::vector<DirectionMap<
       3, std::unique_ptr<domain::BoundaryConditions::BoundaryCondition>>>
   external_boundary_conditions() const override;
@@ -366,6 +371,8 @@ class CylindricalShell : public DomainCreator<3> {
   std::vector<std::string> block_names_{};
   std::unordered_map<std::string, std::unordered_set<std::string>>
       block_groups_{};
+  std::unordered_map<std::string, tnsr::I<double, 3, Frame::Grid>>
+      grid_anchors_{};
   // FunctionsOfTime options
   std::optional<bco::TimeDependentMapOptions> time_dependent_options_{};
 };
