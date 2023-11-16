@@ -100,6 +100,8 @@ CylindricalShell::CylindricalShell(
   // as radius_A_.
   // If the inner sphere does exist, the algorithm for computing
   // outer_radius_A is the same as in SpEC when there is one inner shell.
+  std::cout<<"radius_A_: "<<radius_A_<<std::endl;
+  std::cout<<"outer_radius: "<<outer_radius<<std::endl;
   outer_radius_A_ = include_inner_sphere_A_ ? 4.0 : radius_A_;
 
   grid_anchors_["Center"] = tnsr::I<double, 3, Frame::Grid>{center};
@@ -254,7 +256,7 @@ Domain<3> CylindricalShell::create_domain() const {
       Direction<3>::lower_zeta(), Direction<3>::upper_eta(),
       Direction<3>::upper_xi()}};
 
-  const double outermost_radius = 10.0;
+  const double outermost_radius = outer_radius_;
 
   // Construct vector<CoordMap>s that go from logical coordinates to
   // various blocks making up a unit right cylinder.  These blocks are
