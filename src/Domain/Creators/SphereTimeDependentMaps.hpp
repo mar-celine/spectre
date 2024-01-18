@@ -17,6 +17,8 @@
 #include "Domain/CoordinateMaps/TimeDependent/Shape.hpp"
 #include "Domain/CoordinateMaps/TimeDependent/Translation.hpp"
 #include "Domain/FunctionsOfTime/FunctionOfTime.hpp"
+#include "NumericalAlgorithms/SphericalHarmonics/IO/ReadSurfaceYlm.hpp"
+#include "NumericalAlgorithms/SphericalHarmonics/Strahlkorper.hpp"
 #include "Options/Auto.hpp"
 #include "Options/String.hpp"
 #include "Utilities/TMPL.hpp"
@@ -60,6 +62,30 @@ struct KerrSchildFromBoyerLindquist {
   std::array<double, 3> spin{std::numeric_limits<double>::signaling_NaN(),
                              std::numeric_limits<double>::signaling_NaN(),
                              std::numeric_limits<double>::signaling_NaN()};
+};
+
+struct YlmsFromFile {
+  struct H5Filename {
+    using type = std::string;
+    static constexpr Options::String help =
+        "Path to the data file containing the ylm coefficients and their "
+        "derivatives.";
+  };
+
+  struct CoeffSubfileNames {
+    using type = std::array<std::string, 4>;
+    static constexpr Options::String help =
+        "Subfile names for the different order derviatives of the ylm "
+        "coefficients.";
+  };
+
+  using options = tmpl::list<H5Filename, CoeffSubfileNames>;
+
+  static constexpr Options::String help = {
+      "Strings that locate ylm coefficients for ringdown domain."};
+
+  std::string h5filename{};
+  std::array<std::string, 4> coeffsubfilenames{};
 };
 
 // Label for shape map options
@@ -126,23 +152,23 @@ struct TimeDependentMapOptions {
         "domain."};
 
     struct LMax {
-      using type = size_t;
+      using type = size_t;  // Options::Auto<size_t>;
       static constexpr Options::String help = {
           "Initial LMax for the shape map."};
     };
 
     struct InitialValues {
-      using type =
-          Options::Auto<std::variant<KerrSchildFromBoyerLindquist>, Spherical>;
+      using type = Options::Auto<
+          std::variant<KerrSchildFromBoyerLindquist, YlmsFromFile>, Spherical>;
       static constexpr Options::String help = {
           "Initial Ylm coefficients for the shape map. Specify 'Spherical' for "
           "all coefficients to be initialized to zero."};
     };
-
     using options = tmpl::list<LMax, InitialValues>;
 
     size_t l_max{};
-    std::optional<std::variant<KerrSchildFromBoyerLindquist>> initial_values{};
+    std::optional<std::variant<KerrSchildFromBoyerLindquist, YlmsFromFile>>
+        initial_values{};
   };
 
   struct RotationMapOptions {
@@ -341,5 +367,7 @@ struct TimeDependentMapOptions {
   std::optional<RotationMapOptions> rotation_map_options_{};
   std::optional<ExpansionMapOptions> expansion_map_options_{};
   std::optional<TranslationMapOptions> translation_map_options_{};
+  std::optional<std::variant<KerrSchildFromBoyerLindquist, YlmsFromFile>>
+      initial_shape_values_{};
 };
 }  // namespace domain::creators::sphere

@@ -27,6 +27,8 @@
 #include "PointwiseFunctions/AnalyticSolutions/GeneralRelativity/KerrHorizon.hpp"
 #include "Utilities/ErrorHandling/Error.hpp"
 
+#include <iostream>
+
 namespace domain::creators::sphere {
 
 TimeDependentMapOptions::TimeDependentMapOptions(
@@ -68,6 +70,8 @@ TimeDependentMapOptions::create_functions_of_time(
                                      shape_map_options_.l_max),
       0.0};
   DataVector shape_func{};
+  DataVector shape_func_1st_deriv = shape_zeros;
+  DataVector shape_func_2nd_deriv = shape_zeros;
   DataVector size_func{1, 0.0};
 
   if (shape_map_options_.initial_values.has_value()) {
@@ -88,22 +92,65 @@ TimeDependentMapOptions::create_functions_of_time(
       // Set l=0 for shape map to 0 because size is going to be used
       shape_func[0] = 0.0;
     }
+    if (std::holds_alternative<YlmsFromFile>(initial_shape_values_.value())) {
+      const auto& files = std::get<YlmsFromFile>(initial_shape_values_.value());
+      const auto h5_filename = files.h5filename;
+      const auto coeff_subfile_names = files.coeffsubfilenames;
+      const size_t num_times_requested = 5;
+      // Read Ylm coefficients from file:
+      std::cout << "Now about to call function ylm::read_surface_ylm"
+                << std::endl;
+      const std::vector<ylm::Strahlkorper<Frame::Grid>> strahlkorpers =
+          ylm::read_surface_ylm<Frame::Grid>(
+              h5_filename, coeff_subfile_names[0], num_times_requested);
+      for (auto& strahlkorper : strahlkorpers) {
+        std::cout << "Attempting to print out strahlkorper." << std::endl;
+        std::cout << strahlkorper.coefficients() << std::endl;
+      }
+      std::cout << "Finished calling function ylm::read_surface_ylm"
+                << std::endl;
+
+      std::cout << "Now filling shape_func with values..." << std::endl;
+      std::cout << "Now changing shape away from cylinder again..."
+                << std::endl;
+      shape_func = strahlkorpers[0].coefficients();
+      shape_func[1] = 0.0;
+      shape_func_1st_deriv = -0.0 * strahlkorpers[1].coefficients();
+      // Need to determine what lmax is, whether from file, or set some other
+      // way.
+      shape_func_2nd_deriv =
+          DataVector{shape_func.size(),
+                     0.0};  // shape_zeros; //strahlkorpers[2].coefficients();
+      size_func[0] = 0.0;
+
+      std::cout << "Printing sizes:" << std::endl;
+      std::cout << "shape func: " << shape_func.size() << std::endl;
+      std::cout << "shape func 1st deriv: " << shape_func_1st_deriv.size()
+                << std::endl;
+      std::cout << "shape func 2nd deriv:" << shape_func_2nd_deriv.size()
+                << std::endl;
+
+      // Need to transform to correct frame (Distorted).
+    }
   } else {
     shape_func = shape_zeros;
     size_func[0] = 0.0;
   }
 
+  std::cout << "About to make PiecewisePolynomial for Shape." << std::endl;
   // ShapeMap FunctionOfTime
   result[shape_name] =
       std::make_unique<FunctionsOfTime::PiecewisePolynomial<2>>(
           initial_time_,
-          std::array<DataVector, 3>{
-              {std::move(shape_func), shape_zeros, shape_zeros}},
+          std::array<DataVector, 3>{{std::move(shape_func),
+                                     std::move(shape_func_1st_deriv),
+                                     std::move(shape_func_2nd_deriv)}},
           expiration_times.at(shape_name));
 
   DataVector size_deriv{1, 0.0};
   DataVector size_2nd_deriv{1, 0.0};
 
+  std::cout << "Finished making PiecewisePolynomial for Shape." << std::endl;
   // Size FunctionOfTime (used in ShapeMap)
   result[size_name] = std::make_unique<FunctionsOfTime::PiecewisePolynomial<3>>(
       initial_time_,
@@ -113,6 +160,7 @@ TimeDependentMapOptions::create_functions_of_time(
                                  {0.0}}},
       expiration_times.at(size_name));
 
+<<<<<<< 812611127baa786ad4fa63226957daa907bf129f
   // ExpansionMap FunctionOfTime
   if (expansion_map_options_.has_value()) {
     result[expansion_name] =
@@ -187,6 +235,7 @@ TimeDependentMapOptions::create_functions_of_time(
             expiration_times.at(translation_name));
   }
 
+  std::cout << "About to return result." << std::endl;
   return result;
 }
 
