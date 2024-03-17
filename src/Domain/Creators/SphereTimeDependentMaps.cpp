@@ -160,7 +160,6 @@ TimeDependentMapOptions::create_functions_of_time(
                                  {0.0}}},
       expiration_times.at(size_name));
 
-<<<<<<< 812611127baa786ad4fa63226957daa907bf129f
   // ExpansionMap FunctionOfTime
   if (expansion_map_options_.has_value()) {
     result[expansion_name] =
