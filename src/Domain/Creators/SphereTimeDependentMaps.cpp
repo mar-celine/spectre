@@ -27,8 +27,6 @@
 #include "PointwiseFunctions/AnalyticSolutions/GeneralRelativity/KerrHorizon.hpp"
 #include "Utilities/ErrorHandling/Error.hpp"
 
-#include <iostream>
-
 namespace domain::creators::sphere {
 
 TimeDependentMapOptions::TimeDependentMapOptions(
@@ -98,21 +96,12 @@ TimeDependentMapOptions::create_functions_of_time(
       const auto coeff_subfile_names = files.coeffsubfilenames;
       const size_t num_times_requested = 5;
       // Read Ylm coefficients from file:
-      std::cout << "Now about to call function ylm::read_surface_ylm"
-                << std::endl;
       const std::vector<ylm::Strahlkorper<Frame::Grid>> strahlkorpers =
           ylm::read_surface_ylm<Frame::Grid>(
               h5_filename, coeff_subfile_names[0], num_times_requested);
       for (auto& strahlkorper : strahlkorpers) {
-        std::cout << "Attempting to print out strahlkorper." << std::endl;
-        std::cout << strahlkorper.coefficients() << std::endl;
       }
-      std::cout << "Finished calling function ylm::read_surface_ylm"
-                << std::endl;
 
-      std::cout << "Now filling shape_func with values..." << std::endl;
-      std::cout << "Now changing shape away from cylinder again..."
-                << std::endl;
       shape_func = strahlkorpers[0].coefficients();
       shape_func[1] = 0.0;
       shape_func_1st_deriv = -0.0 * strahlkorpers[1].coefficients();
@@ -123,13 +112,6 @@ TimeDependentMapOptions::create_functions_of_time(
                      0.0};  // shape_zeros; //strahlkorpers[2].coefficients();
       size_func[0] = 0.0;
 
-      std::cout << "Printing sizes:" << std::endl;
-      std::cout << "shape func: " << shape_func.size() << std::endl;
-      std::cout << "shape func 1st deriv: " << shape_func_1st_deriv.size()
-                << std::endl;
-      std::cout << "shape func 2nd deriv:" << shape_func_2nd_deriv.size()
-                << std::endl;
-
       // Need to transform to correct frame (Distorted).
     }
   } else {
@@ -137,7 +119,6 @@ TimeDependentMapOptions::create_functions_of_time(
     size_func[0] = 0.0;
   }
 
-  std::cout << "About to make PiecewisePolynomial for Shape." << std::endl;
   // ShapeMap FunctionOfTime
   result[shape_name] =
       std::make_unique<FunctionsOfTime::PiecewisePolynomial<2>>(
@@ -150,7 +131,6 @@ TimeDependentMapOptions::create_functions_of_time(
   DataVector size_deriv{1, 0.0};
   DataVector size_2nd_deriv{1, 0.0};
 
-  std::cout << "Finished making PiecewisePolynomial for Shape." << std::endl;
   // Size FunctionOfTime (used in ShapeMap)
   result[size_name] = std::make_unique<FunctionsOfTime::PiecewisePolynomial<3>>(
       initial_time_,
@@ -234,7 +214,6 @@ TimeDependentMapOptions::create_functions_of_time(
             expiration_times.at(translation_name));
   }
 
-  std::cout << "About to return result." << std::endl;
   return result;
 }
 
