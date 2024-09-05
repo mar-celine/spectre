@@ -14,6 +14,7 @@
 
 #include "Domain/BoundaryConditions/BoundaryCondition.hpp"
 #include "Domain/BoundaryConditions/GetBoundaryConditionsBase.hpp"
+#include "Domain/CoordinateMaps/DiscreteRotation.hpp"
 #include "Domain/CoordinateMaps/Distribution.hpp"
 #include "Domain/Creators/DomainCreator.hpp"
 #include "Domain/Creators/TimeDependence/TimeDependence.hpp"
@@ -187,12 +188,14 @@ class Sphere : public DomainCreator<3> {
                                 BulgedCube>,
           domain::CoordinateMap<Frame::BlockLogical, Frame::Inertial, Affine3D>,
           domain::CoordinateMap<Frame::BlockLogical, Frame::Inertial,
-                                Equiangular3D>,
+                                Equiangular3D,
+                                CoordinateMaps::DiscreteRotation<3>>,
           // Wedges
           domain::CoordinateMap<Frame::BlockLogical, Frame::Inertial,
                                 CoordinateMaps::Wedge<3>>,
           domain::CoordinateMap<Frame::BlockLogical, Frame::Inertial,
                                 CoordinateMaps::Wedge<3>,
+                                CoordinateMaps::DiscreteRotation<3>,
                                 CoordinateMaps::EquatorialCompression>>,
       typename sphere::TimeDependentMapOptions::maps_list>;
 

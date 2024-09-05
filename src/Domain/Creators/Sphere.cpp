@@ -20,6 +20,7 @@
 #include "Domain/CoordinateMaps/BulgedCube.hpp"
 #include "Domain/CoordinateMaps/CoordinateMap.hpp"
 #include "Domain/CoordinateMaps/CoordinateMap.tpp"
+#include "Domain/CoordinateMaps/DiscreteRotation.hpp"
 #include "Domain/CoordinateMaps/EquatorialCompression.hpp"
 #include "Domain/CoordinateMaps/Equiangular.hpp"
 #include "Domain/CoordinateMaps/ProductMaps.hpp"
@@ -305,7 +306,12 @@ Domain<3> Sphere::create_domain() const {
   const domain::CoordinateMaps::EquatorialCompression compression{
       aspect_ratio, index_polar_axis};
 
-  const double opening_angle = M_PI / 3.0;
+  const domain::CoordinateMaps::DiscreteRotation<3> rotation{
+      OrientationMap<3>{{Direction<3>::upper_eta(), Direction<3>::upper_zeta(),
+                         Direction<3>::upper_xi()}}};
+
+  const double opening_angle = 2. * atan(0.7);
+
   auto coord_maps = domain::make_vector_coordinate_map_base<Frame::BlockLogical,
                                                             Frame::Inertial, 3>(
       sph_wedge_coordinate_maps(
@@ -313,7 +319,7 @@ Domain<3> Sphere::create_domain() const {
           fill_interior_ ? std::get<InnerCube>(interior_).sphericity : 1.0, 1.0,
           use_equiangular_map_, false, radial_partitioning_,
           radial_distribution_, which_wedges_, opening_angle),
-      compression);
+      rotation, compression);
 
   std::cout << "Changed opening angle." << std::endl;
 
@@ -335,7 +341,8 @@ Domain<3> Sphere::create_domain() const {
                     Equiangular(-1.0, 1.0, -1.0 * inner_radius_ / sqrt(3.0),
                                 inner_radius_ / sqrt(3.0)),
                     Equiangular(-1.0, 1.0, -1.0 * inner_radius_ / sqrt(3.0),
-                                inner_radius_ / sqrt(3.0))}));
+                                inner_radius_ / sqrt(3.0))},
+                rotation));
       } else {
         coord_maps.emplace_back(
             make_coordinate_map_base<Frame::BlockLogical, Frame::Inertial>(
