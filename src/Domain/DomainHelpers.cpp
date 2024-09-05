@@ -628,7 +628,7 @@ std::vector<domain::CoordinateMaps::Wedge<3>> sph_wedge_coordinate_maps(
     }
     // Generate wedges/half-wedges a layer at a time.
     std::vector<Wedge3DMap> wedges_for_this_layer{};
-    if (not use_half_wedges) {
+    if (not use_half_wedges and not(which_wedges == ShellWedges::All)) {
       for (size_t face_j = which_wedge_index(which_wedges); face_j < 6;
            face_j++) {
         wedges_for_this_layer.emplace_back(
@@ -637,6 +637,31 @@ std::vector<domain::CoordinateMaps::Wedge<3>> sph_wedge_coordinate_maps(
             use_equiangular_map, Halves::Both, radial_distribution_this_layer,
             std::array<double, 2>({{M_PI_2, M_PI_2}}));
       }
+    } else if (not use_half_wedges and which_wedges == ShellWedges::All) {
+      for (size_t i = 0; i < 4; i++) {
+        wedges_for_this_layer.emplace_back(
+            temp_inner_radius, temp_outer_radius, temp_inner_sphericity,
+            outer_sphericity, gsl::at(wedge_orientations, i),
+            use_equiangular_map, Halves::Both, radial_distribution_this_layer,
+            std::array<double, 2>({{opening_angle, M_PI_2}}), false);
+      }
+      if (temp_inner_sphericity == 0) {
+        temp_inner_radius *= tan(0.5 * opening_angle);
+      }
+      const double endcap_opening_angle = M_PI - opening_angle;
+      const std::array<double, 2> endcap_opening_angles = {
+          {endcap_opening_angle, endcap_opening_angle}};
+      wedges_for_this_layer.emplace_back(
+          temp_inner_radius, temp_outer_radius, temp_inner_sphericity,
+          outer_sphericity, gsl::at(wedge_orientations, 4), use_equiangular_map,
+          Halves::Both, radial_distribution_this_layer, endcap_opening_angles,
+          false);
+      wedges_for_this_layer.emplace_back(
+          temp_inner_radius, temp_outer_radius, temp_inner_sphericity,
+          outer_sphericity, gsl::at(wedge_orientations, 5), use_equiangular_map,
+          Halves::Both, radial_distribution_this_layer, endcap_opening_angles,
+          false);
+
     } else {
       for (size_t i = 0; i < 4; i++) {
         wedges_for_this_layer.emplace_back(
@@ -651,6 +676,9 @@ std::vector<domain::CoordinateMaps::Wedge<3>> sph_wedge_coordinate_maps(
             use_equiangular_map, Halves::UpperOnly,
             radial_distribution_this_layer,
             std::array<double, 2>({{opening_angle, M_PI_2}}));
+      }
+      if (temp_inner_sphericity == 0) {
+        temp_inner_radius *= tan(0.5 * opening_angle);
       }
       const double endcap_opening_angle = M_PI - opening_angle;
       const std::array<double, 2> endcap_opening_angles = {

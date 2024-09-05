@@ -38,6 +38,8 @@
 #include "Utilities/GetOutput.hpp"
 #include "Utilities/MakeArray.hpp"
 
+#include <iostream>
+
 namespace Frame {
 struct Inertial;
 struct BlockLogical;
@@ -303,14 +305,17 @@ Domain<3> Sphere::create_domain() const {
   const domain::CoordinateMaps::EquatorialCompression compression{
       aspect_ratio, index_polar_axis};
 
+  const double opening_angle = M_PI / 3.0;
   auto coord_maps = domain::make_vector_coordinate_map_base<Frame::BlockLogical,
                                                             Frame::Inertial, 3>(
       sph_wedge_coordinate_maps(
           inner_radius_, outer_radius_,
           fill_interior_ ? std::get<InnerCube>(interior_).sphericity : 1.0, 1.0,
           use_equiangular_map_, false, radial_partitioning_,
-          radial_distribution_, which_wedges_),
+          radial_distribution_, which_wedges_, opening_angle),
       compression);
+
+  std::cout << "Changed opening angle." << std::endl;
 
   std::unordered_map<std::string, ExcisionSphere<3>> excision_spheres{};
 
@@ -318,12 +323,15 @@ Domain<3> Sphere::create_domain() const {
     const double inner_cube_sphericity =
         std::get<InnerCube>(interior_).sphericity;
     if (inner_cube_sphericity == 0.0) {
+      const double opening_angle_factor = tan(0.5 * opening_angle);
       if (use_equiangular_map_) {
         coord_maps.emplace_back(
             make_coordinate_map_base<Frame::BlockLogical, Frame::Inertial>(
                 Equiangular3D{
-                    Equiangular(-1.0, 1.0, -1.0 * inner_radius_ / sqrt(3.0),
-                                inner_radius_ / sqrt(3.0)),
+                    Equiangular(
+                        -1.0, 1.0,
+                        -1.0 * opening_angle_factor * inner_radius_ / sqrt(3.0),
+                        opening_angle_factor * inner_radius_ / sqrt(3.0)),
                     Equiangular(-1.0, 1.0, -1.0 * inner_radius_ / sqrt(3.0),
                                 inner_radius_ / sqrt(3.0)),
                     Equiangular(-1.0, 1.0, -1.0 * inner_radius_ / sqrt(3.0),
@@ -331,12 +339,15 @@ Domain<3> Sphere::create_domain() const {
       } else {
         coord_maps.emplace_back(
             make_coordinate_map_base<Frame::BlockLogical, Frame::Inertial>(
-                Affine3D{Affine(-1.0, 1.0, -1.0 * inner_radius_ / sqrt(3.0),
-                                inner_radius_ / sqrt(3.0)),
-                         Affine(-1.0, 1.0, -1.0 * inner_radius_ / sqrt(3.0),
-                                inner_radius_ / sqrt(3.0)),
-                         Affine(-1.0, 1.0, -1.0 * inner_radius_ / sqrt(3.0),
-                                inner_radius_ / sqrt(3.0))}));
+                Affine3D{
+                    Affine(
+                        -1.0, 1.0,
+                        -1.0 * opening_angle_factor * inner_radius_ / sqrt(3.0),
+                        opening_angle_factor * inner_radius_ / sqrt(3.0)),
+                    Affine(-1.0, 1.0, -1.0 * inner_radius_ / sqrt(3.0),
+                           inner_radius_ / sqrt(3.0)),
+                    Affine(-1.0, 1.0, -1.0 * inner_radius_ / sqrt(3.0),
+                           inner_radius_ / sqrt(3.0))}));
       }
     } else {
       coord_maps.emplace_back(
