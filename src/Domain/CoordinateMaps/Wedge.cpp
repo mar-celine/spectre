@@ -142,19 +142,19 @@ std::array<tt::remove_cvref_wrap_t<T>, Dim> Wedge<Dim>::operator()(
 
   std::array<ReturnType, Dim - 1> cap{};
   cap[0] = with_equiangular_map_
-               ? tan(0.5 * opening_angles_[0]) *
-                     tan(0.5 * opening_angles_distribution_[0] * xi) /
+               ? tan(0.5 * opening_angles_distribution_[0] * xi) /
                      tan(0.5 * opening_angles_distribution_[0])
                : xi;
+  cap[0] *= tan(0.5 * opening_angles_[0]);
   ReturnType one_over_rho = 1.0 + square(cap[0]);
   if constexpr (Dim == 3) {
     // Azimuthal angle
     const ReturnType& eta = source_coords[azimuth_coord];
     cap[1] = with_equiangular_map_
-                 ? tan(0.5 * opening_angles_[1]) *
-                       tan(0.5 * opening_angles_distribution_[1] * eta) /
+                 ? tan(0.5 * opening_angles_distribution_[1] * eta) /
                        tan(0.5 * opening_angles_distribution_[1])
                  : eta;
+    cap[1] *= tan(0.5 * opening_angles_[1]);
     one_over_rho += square(cap[1]);
   }
   one_over_rho = 1. / sqrt(one_over_rho);
@@ -223,7 +223,7 @@ std::optional<std::array<double, Dim>> Wedge<Dim>::inverse(
                         atan(tan(0.5 * opening_angles_distribution_[0]) /
                              tan(0.5 * opening_angles_[0]) * cap[0]) /
                         opening_angles_distribution_[0]
-                  : cap[0];
+                  : cap[0] / tan(0.5 * opening_angles_[0]);
   if (halves_to_use_ == WedgeHalves::UpperOnly) {
     xi *= 2.0;
     xi -= 1.0;
@@ -241,7 +241,7 @@ std::optional<std::array<double, Dim>> Wedge<Dim>::inverse(
                   atan(tan(0.5 * opening_angles_distribution_[1]) /
                        tan(0.5 * opening_angles_[1]) * cap[1]) /
                   opening_angles_distribution_[1]
-            : cap[1];
+            : cap[1] / tan(0.5 * opening_angles_[1]);
   }
   return logical_coords;
 }
@@ -267,33 +267,32 @@ tnsr::Ij<tt::remove_cvref_wrap_t<T>, Dim, Frame::NoFrame> Wedge<Dim>::jacobian(
   std::array<ReturnType, Dim - 1> cap{};
   std::array<ReturnType, Dim - 1> cap_deriv{};
   cap[0] = with_equiangular_map_
-               ? tan(0.5 * opening_angles_[0]) *
-                     tan(0.5 * opening_angles_distribution_[0] * xi) /
+               ? tan(0.5 * opening_angles_distribution_[0] * xi) /
                      tan(0.5 * opening_angles_distribution_[0])
                : xi;
+  cap[0] *= tan(0.5 * opening_angles_[0]);
   cap_deriv[0] =
       with_equiangular_map_
-          ? 0.5 * opening_angles_distribution_[0] *
-                tan(0.5 * opening_angles_[0]) /
+          ? 0.5 * opening_angles_distribution_[0] /
                 tan(0.5 * opening_angles_distribution_[0]) /
                 square(cos(0.5 * opening_angles_distribution_[0] * xi))
           : make_with_value<ReturnType>(xi, 1.0);
+  cap_deriv[0] *= tan(0.5 * opening_angles_[0]);
   ReturnType one_over_rho = 1.0 + square(cap[0]);
   if constexpr (Dim == 3) {
     // Azimuthal angle
     const ReturnType& eta = source_coords[azimuth_coord];
     cap[1] = with_equiangular_map_
-                 ? tan(0.5 * opening_angles_[1]) *
-                       tan(0.5 * opening_angles_distribution_[1] * eta) /
+                 ? tan(0.5 * opening_angles_distribution_[1] * eta) /
                        tan(0.5 * opening_angles_distribution_[1])
                  : eta;
-    cap_deriv[1] =
-        with_equiangular_map_
-            ? 0.5 * opening_angles_distribution_[1] *
-                  tan(0.5 * opening_angles_[1]) /
-                  tan(0.5 * opening_angles_distribution_[1]) /
-                  square(cos(0.5 * opening_angles_distribution_[1] * eta))
-            : make_with_value<ReturnType>(xi, 1.0);
+    cap[1] *= cap_deriv[1] = tan(0.5 * opening_angles_[1]);
+    with_equiangular_map_
+        ? 0.5 * opening_angles_distribution_[1] /
+              tan(0.5 * opening_angles_distribution_[1]) /
+              square(cos(0.5 * opening_angles_distribution_[1] * eta))
+        : make_with_value<ReturnType>(xi, 1.0);
+    cap_deriv[1] *= tan(0.5 * opening_angles_[1]);
     one_over_rho += square(cap[1]);
   }
   one_over_rho = 1. / sqrt(one_over_rho);
@@ -411,33 +410,33 @@ Wedge<Dim>::inv_jacobian(const std::array<T, Dim>& source_coords) const {
   std::array<ReturnType, Dim> cap{};
   std::array<ReturnType, Dim> cap_deriv{};
   cap[0] = with_equiangular_map_
-               ? tan(0.5 * opening_angles_[0]) *
-                     tan(0.5 * opening_angles_distribution_[0] * xi) /
+               ? tan(0.5 * opening_angles_distribution_[0] * xi) /
                      tan(0.5 * opening_angles_distribution_[0])
                : xi;
+  cap[0] *= tan(0.5 * opening_angles_[0]);
   cap_deriv[0] =
       with_equiangular_map_
-          ? 0.5 * opening_angles_distribution_[0] *
-                tan(0.5 * opening_angles_[0]) /
+          ? 0.5 * opening_angles_distribution_[0] /
                 tan(0.5 * opening_angles_distribution_[0]) /
                 square(cos(0.5 * opening_angles_distribution_[0] * xi))
           : make_with_value<ReturnType>(xi, 1.0);
+  cap_deriv[0] *= tan(0.5 * opening_angles_[0]);
   ReturnType one_over_rho = 1.0 + square(cap[0]);
   if constexpr (Dim == 3) {
     // Azimuthal angle
     const ReturnType& eta = source_coords[azimuth_coord];
     cap[1] = with_equiangular_map_
-                 ? tan(0.5 * opening_angles_[1]) *
-                       tan(0.5 * opening_angles_distribution_[1] * eta) /
+                 ? tan(0.5 * opening_angles_distribution_[1] * eta) /
                        tan(0.5 * opening_angles_distribution_[1])
                  : eta;
+    cap[1] *= tan(0.5 * opening_angles_[1]);
     cap_deriv[1] =
         with_equiangular_map_
-            ? 0.5 * opening_angles_distribution_[1] *
-                  tan(0.5 * opening_angles_[1]) /
+            ? 0.5 * opening_angles_distribution_[1] /
                   tan(0.5 * opening_angles_distribution_[1]) /
                   square(cos(0.5 * opening_angles_distribution_[1] * eta))
             : make_with_value<ReturnType>(xi, 1.0);
+    cap_deriv[1] *= tan(0.5 * opening_angles_[1]);
     one_over_rho += square(cap[1]);
   }
   one_over_rho = 1. / sqrt(one_over_rho);
