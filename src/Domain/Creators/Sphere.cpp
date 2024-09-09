@@ -354,7 +354,8 @@ Domain<3> Sphere::create_domain() const {
                     Affine(-1.0, 1.0, -1.0 * inner_radius_ / sqrt(3.0),
                            inner_radius_ / sqrt(3.0)),
                     Affine(-1.0, 1.0, -1.0 * inner_radius_ / sqrt(3.0),
-                           inner_radius_ / sqrt(3.0))}));
+                           inner_radius_ / sqrt(3.0))},
+                rotation));
       }
     } else {
       coord_maps.emplace_back(

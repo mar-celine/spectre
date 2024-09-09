@@ -186,7 +186,8 @@ class Sphere : public DomainCreator<3> {
           // Inner cube
           domain::CoordinateMap<Frame::BlockLogical, Frame::Inertial,
                                 BulgedCube>,
-          domain::CoordinateMap<Frame::BlockLogical, Frame::Inertial, Affine3D>,
+          domain::CoordinateMap<Frame::BlockLogical, Frame::Inertial, Affine3D,
+                                CoordinateMaps::DiscreteRotation<3>>,
           domain::CoordinateMap<Frame::BlockLogical, Frame::Inertial,
                                 Equiangular3D,
                                 CoordinateMaps::DiscreteRotation<3>>,
